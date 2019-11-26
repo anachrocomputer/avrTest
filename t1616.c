@@ -1,3 +1,5 @@
+/* t1616 --- test code for ATtiny1616 and other 1-series chips 2019-11-26 */
+
 #define F_CPU (20000000)
 
 #include <avr/io.h>
@@ -24,11 +26,14 @@ ISR(USART0_TXC_vect)
 {
 }
 
+
+/* TCA0_OVF_vect --- ISR for Timer/Counter 0 overflow, used for 1ms ticker */
+
 ISR(TCA0_OVF_vect)
 {
    TCA0.SINGLE.INTFLAGS = TCA_SINGLE_OVF_bm;
    Milliseconds++;
-   PORTA.OUTTGL = PIN2_bm;
+   PORTA.OUTTGL = PIN2_bm;    // DEBUG: 500Hz on PA2 pin
 }
 
 
@@ -52,8 +57,49 @@ void dally(const uint32_t ticks)
 }
 
 
+/* setRGBLed --- control RGB LED connected to PORT B */
+
+void setRGBLed(const int state)
+{
+   switch (state) {
+   case 0:                    // Red
+      PORTB.OUTSET = LED_R;
+      PORTB.OUTCLR = LED_G;
+      PORTB.OUTCLR = LED_B;
+      break;
+   case 1:                    // Yellow
+      PORTB.OUTSET = LED_R;
+      PORTB.OUTSET = LED_G;
+      PORTB.OUTCLR = LED_B;
+      break;
+   case 2:                    // Green
+      PORTB.OUTCLR = LED_R;
+      PORTB.OUTSET = LED_G;
+      PORTB.OUTCLR = LED_B;
+      break;
+   case 3:                    // Cyan
+      PORTB.OUTCLR = LED_R;
+      PORTB.OUTSET = LED_G;
+      PORTB.OUTSET = LED_B;
+      break;
+   case 4:                    // Blue
+      PORTB.OUTCLR = LED_R;
+      PORTB.OUTCLR = LED_G;
+      PORTB.OUTSET = LED_B;
+      break;
+   case 5:                    // Magenta
+      PORTB.OUTSET = LED_R;
+      PORTB.OUTCLR = LED_G;
+      PORTB.OUTSET = LED_B;
+      break;
+   }
+}
+
+
 int main(void)
 {
+   int ledState = 0;
+   
    _PROTECTED_WRITE(CLKCTRL.MCLKCTRLA, CLKCTRL_CLKSEL_OSC20M_gc); // Select 20MHz RC oscillator
    
    //_PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_6X_gc | CLKCTRL_PEN_bm); // Divide-by-six
@@ -75,16 +121,20 @@ int main(void)
    TCA0.SINGLE.INTCTRL = TCA_SINGLE_OVF_bm;
    TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
    
-   sei();
+   sei();   // Enable interrupts
    
    while (1) {
       PORTA.OUTSET = LED;        // LED on PA1 on
-      PORTB.OUTSET = LED_G;
+      setRGBLed(ledState++);
+      if (ledState > 5)
+         ledState = 0;
       
       dally(500UL);
 
       PORTA.OUTCLR = LED;        // LED on PA1 off
-      PORTB.OUTCLR = LED_G;
+      setRGBLed(ledState++);
+      if (ledState > 5)
+         ledState = 0;
       
       dally(500UL);
    }

@@ -6,11 +6,16 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-#define LED PIN1_bm     // LED on PA1
+// UART TxD on PA1 (alternate)
+// UART RxD on PA2 (alternate)
+#define LED PIN3_bm     // LED on PA3
+// 500Hz square wave on PA4
 
-#define LED_R PIN0_bm   // Red LED on PB0
-#define LED_G PIN1_bm   // Green LED on PB1
-#define LED_B PIN2_bm   // Blue LED on PB2
+#define LED_R PIN0_bm   // Red LED on PB0/WO0
+#define LED_G PIN1_bm   // Green LED on PB1/WO1
+#define LED_B PIN2_bm   // Blue LED on PB2/WO2
+
+#define BAUDRATE (9600UL)
 
 volatile uint32_t Milliseconds = 0UL;
 volatile uint8_t Tick = 0;
@@ -35,9 +40,11 @@ ISR(TCB0_INT_vect)
    TCB0.INTFLAGS = TCB_CAPT_bm;
    Milliseconds++;
    Tick = 1;
-   PORTA.OUTTGL = PIN2_bm;    // DEBUG: 500Hz on PA2 pin
+   PORTA.OUTTGL = PIN4_bm;    // DEBUG: 500Hz on PA4 pin
 }
 
+
+/* millis --- return milliseconds since reset */
 
 uint32_t millis(void)
 {
@@ -48,6 +55,17 @@ uint32_t millis(void)
    sei();
    
    return (ms);
+}
+
+
+/* t1ou --- transmit one character to the UART by polling */
+
+void t1ou(const int ch)
+{
+   while ((USART0.STATUS & USART_DREIF_bm) == 0)
+      ;
+      
+   USART0.TXDATAL = ch;
 }
 
 
@@ -119,14 +137,23 @@ int main(void)
    //_PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_6X_gc | CLKCTRL_PEN_bm); // Divide-by-six
    _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_6X_gc); // No divide-by-six
 
-   PORTA.DIR = 0xFF; // Port A to all outputs
+   PORTA.DIR = PIN1_bm | PIN3_bm | PIN4_bm;
    PORTB.DIR = PIN0_bm | PIN1_bm | PIN2_bm;  // Just PB0, PB1, PB2 to outputs
    PORTC.DIR = 0;
 
    PORTA.OUT = 0xFF;
    PORTB.OUT = LED_R;
    PORTC.OUT = 0xFF;
+   
+   // Switch UART pins to the alternate locations to avoid clash with PWM pins
+   PORTMUX.CTRLB = PORTMUX_USART0_ALTERNATE_gc;
 
+   // Set up UART
+   USART0.CTRLA = 0;
+   USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc;
+   USART0.CTRLC = USART_CMODE_ASYNCHRONOUS_gc | USART_PMODE_DISABLED_gc | USART_SBMODE_1BIT_gc | USART_CHSIZE_8BIT_gc;
+   USART0.BAUD = (F_CPU * 64UL) / (16UL * BAUDRATE);
+   
    // Set up TCA0 for three PWM outputs
    TCA0.SINGLE.PER = 255;
    TCA0.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV64_gc;
@@ -167,6 +194,8 @@ int main(void)
 
          if (millis() > end) {
             PORTA.OUTTGL = LED;        // LED on PA1 toggle
+            t1ou('A');
+            t1ou('B');
             end = millis() + 500UL;
          }
          

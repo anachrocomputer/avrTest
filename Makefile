@@ -1,47 +1,73 @@
 # Makefile for simple AVR programming
 
+# We'll pick up the GCC toolchain from the Arduino installation
+ARDUINO=/home/john/Arduino/arduino-1.8.10
+
 MCU45=attiny45
 MCU23=attiny2313
 MCU328=atmega328p
-CC=avr-gcc
-LD=avr-gcc
-PORT=/dev/ttyS4
+MCU1616=attiny1616
 
-all: t45.elf t2313.elf t328p.elf
+CC=$(ARDUINO)/hardware/tools/avr/bin/avr-gcc
+LD=$(ARDUINO)/hardware/tools/avr/bin/avr-gcc
+DUDE=$(ARDUINO)/hardware/tools/avr/bin/avrdude
+
+CFLAGS=-c -o $@ -O3
+LDFLAGS=-o $@
+DUDEFLAGS=-C $(ARDUINO)/hardware/tools/avr/etc/avrdude.conf
+
+ISPPORT=/dev/ttyS4
+ISPDEV=-c avrispv2
+UPDIPORT=/dev/ttyUSB0
+UPDIDEV=-c jtag2updi
+
+all: t45.elf t2313.elf t328p.elf t1616.elf
 
 t45.elf: t45.o
-	$(CC) -mmcu=$(MCU45) -o t45.elf t45.o
+	$(LD) -mmcu=$(MCU45) $(LDFLAGS) t45.o
 
 t45.o: t45.c
-	$(LD) -mmcu=$(MCU45) -o t45.o -O3 -c t45.c
+	$(CC) -mmcu=$(MCU45) $(CFLAGS) t45.c
 
 t2313.elf: t2313.o
-	$(CC) -mmcu=$(MCU23) -o t2313.elf t2313.o
+	$(LD) -mmcu=$(MCU23) $(LDFLAGS) t2313.o
 
 t2313.o: t2313.c
-	$(LD) -mmcu=$(MCU23) -o t2313.o -O3 -c t2313.c
+	$(CC) -mmcu=$(MCU23) $(CFLAGS) t2313.c
 
 t328p.elf: t328p.o
-	$(CC) -mmcu=$(MCU328) -o t328p.elf t328p.o
+	$(LD) -mmcu=$(MCU328) $(LDFLAGS) t328p.o
 
 t328p.o: t328p.c
-	$(LD) -mmcu=$(MCU328) -o t328p.o -O3 -c t328p.c
+	$(CC) -mmcu=$(MCU328) $(CFLAGS) t328p.c
+
+t1616.elf: t1616.o
+	$(LD) -mmcu=$(MCU1616) $(LDFLAGS) t1616.o
+
+t1616.o: t1616.c
+	$(CC) -mmcu=$(MCU1616) $(CFLAGS) t1616.c
 
 prog45: t45.elf
-	avrdude -c avrispv2 -P $(PORT) -p $(MCU45) -e -U flash:w:t45.elf:e
+	$(DUDE) $(DUDEFLAGS) $(ISPDEV) -P $(ISPPORT) -p $(MCU45) -e -U flash:w:t45.elf:e
 
 prog23: t2313.elf
-	avrdude -c avrispv2 -P $(PORT) -p $(MCU23) -e -U flash:w:t2313.elf:e
+	$(DUDE) $(DUDEFLAGS) $(ISPDEV) -P $(ISPPORT) -p $(MCU23) -e -U flash:w:t2313.elf:e
 
 prog328: t328p.elf
-	avrdude -c avrispv2 -P $(PORT) -p $(MCU328) -e -U flash:w:t328p.elf:e
+	$(DUDE) $(DUDEFLAGS) $(ISPDEV) -P $(ISPPORT) -p $(MCU328) -e -U flash:w:t328p.elf:e
+
+prog1616: t1616.elf
+	$(DUDE) $(DUDEFLAGS) $(UPDIDEV) -P $(UPDIPORT) -p $(MCU1616) -e -U flash:w:t1616.elf:e
 
 fuse23:
-	avrdude -c avrispv2 -P $(PORT) -p $(MCU23) -U lfuse:w:0xE4:m
+	$(DUDE) $(DUDEFLAGS) $(ISPDEV) -P $(ISPPORT) -p $(MCU23) -U lfuse:w:0xE4:m
 
 fuse328:
-	avrdude -c avrispv2 -P $(PORT) -p $(MCU328) -U lfuse:w:0xFF:m
+	$(DUDE) $(DUDEFLAGS) $(ISPDEV) -P $(ISPPORT) -p $(MCU328) -U lfuse:w:0xFF:m
 
-test:
-	avrdude -c avrispv2 -P $(PORT) -p $(MCU45)
+testisp:
+	$(DUDE) $(DUDEFLAGS) $(ISPDEV) -P $(ISPPORT) -p $(MCU45)
+
+testupdi:
+	$(DUDE) $(DUDEFLAGS) $(UPDIDEV) -P $(UPDIPORT) -p $(MCU1616)
 

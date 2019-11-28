@@ -11,8 +11,8 @@ The 'Makefile' also has targets for the AVR programming tool 'avrdude'.
 ## Chips Supported
 
 At present, there's only support for the ATtiny45, the ATtiny2313,
-and the ATmega328P.
-I intend to add support for the ATmega1284P and the ATtiny1616 very soon.
+the ATtiny1616 and the ATmega328P.
+I intend to add support for the ATmega1284P very soon.
 
 ## AVR Toolchain
 
@@ -36,3 +36,16 @@ to 'avrdude'
 
 Blinking LEDs, of course!
 All the LEDs should blink at 1Hz (500ms on, 500ms off).
+This frequency may be measured as a means of verifying correct
+clocking of the AVR chip.
+
+On the ATtiny2313 and ATmega328P, an RGB LED should switch
+between colours, including fully off and fully on (white).
+
+On the ATtiny1616, an RGB LED should fade between colours
+using PWM.
+In addition, a 500Hz square wave should be generated on pin PA4.
+
+On the ATtiny2313, ATmega328P and ATtiny1616, the serial port
+should transmit a message at 9600 baud.
+The message will be improved in a future version of the code.

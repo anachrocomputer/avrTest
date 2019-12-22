@@ -2,6 +2,7 @@
 
 #define F_CPU (20000000)
 
+#include <stdio.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
@@ -17,19 +18,80 @@
 
 #define BAUDRATE (9600UL)
 
+#define UART_RX_BUFFER_SIZE  (128)
+#define UART_RX_BUFFER_MASK (UART_RX_BUFFER_SIZE - 1)
+#if (UART_RX_BUFFER_SIZE & UART_RX_BUFFER_MASK) != 0
+#error UART_RX_BUFFER_SIZE must be a power of two and <= 256
+#endif
+
+#define UART_TX_BUFFER_SIZE  (128)
+#define UART_TX_BUFFER_MASK (UART_TX_BUFFER_SIZE - 1)
+#if (UART_TX_BUFFER_SIZE & UART_TX_BUFFER_MASK) != 0
+#error UART_TX_BUFFER_SIZE must be a power of two and <= 256
+#endif
+
+struct UART_RX_BUFFER
+{
+    volatile uint8_t head;
+    volatile uint8_t tail;
+    uint8_t buf[UART_RX_BUFFER_SIZE];
+};
+
+struct UART_TX_BUFFER
+{
+    volatile uint8_t head;
+    volatile uint8_t tail;
+    uint8_t buf[UART_TX_BUFFER_SIZE];
+};
+
+struct UART_BUFFER
+{
+    struct UART_TX_BUFFER tx;
+    struct UART_RX_BUFFER rx;
+};
+
+// UART buffers
+struct UART_BUFFER U0Buf;
+
 volatile uint32_t Milliseconds = 0UL;
 volatile uint8_t Tick = 0;
 
+
+/* USART0_RXC_vect --- ISR for USART0 Receive Complete, used for Rx */
+
 ISR(USART0_RXC_vect)
 {
+   const uint8_t tmphead = (U0Buf.rx.head + 1) & UART_RX_BUFFER_MASK;
+   const uint8_t ch = USART0.RXDATAL;  // Read received byte from UART
+   
+   if (tmphead == U0Buf.rx.tail)   // Is receive buffer full?
+   {
+       // Buffer is full; discard new byte
+   }
+   else
+   {
+      U0Buf.rx.head = tmphead;
+      U0Buf.rx.buf[tmphead] = ch;   // Store byte in buffer
+   }
 }
+
+
+/* USART0_DRE_vect --- ISR for USART0 Data Register Empty, used for Tx */
 
 ISR(USART0_DRE_vect)
 {
-}
+   if (U0Buf.tx.head != U0Buf.tx.tail) // Is there anything to send?
+   {
+      const uint8_t tmptail = (U0Buf.tx.tail + 1) & UART_TX_BUFFER_MASK;
+      
+      U0Buf.tx.tail = tmptail;
 
-ISR(USART0_TXC_vect)
-{
+      USART0.TXDATAL = U0Buf.tx.buf[tmptail];    // Transmit one byte
+   }
+   else
+   {
+      USART0.CTRLA &= ~(USART_DREIE_bm); // Nothing left to send; disable Tx interrupt
+   }
 }
 
 
@@ -66,6 +128,60 @@ void t1ou(const int ch)
       ;
       
    USART0.TXDATAL = ch;
+}
+
+
+/* UART0RxByte --- read one character from the UART via the circular buffer */
+
+uint8_t UART0RxByte(void)
+{
+   const uint8_t tmptail = (U0Buf.rx.tail + 1) & UART_RX_BUFFER_MASK;
+   
+   while (U0Buf.rx.head == U0Buf.rx.tail)  // Wait, if buffer is empty
+       ;
+   
+   U0Buf.rx.tail = tmptail;
+   
+   return (U0Buf.rx.buf[tmptail]);
+}
+
+
+/* UART0TxByte --- send one character to the UART via the circular buffer */
+
+void UART0TxByte(const uint8_t data)
+{
+   const uint8_t tmphead = (U0Buf.tx.head + 1) & UART_TX_BUFFER_MASK;
+   
+   while (tmphead == U0Buf.tx.tail)   // Wait, if buffer is full
+       ;
+
+   U0Buf.tx.buf[tmphead] = data;
+   U0Buf.tx.head = tmphead;
+
+   USART0.CTRLA |= USART_DREIE_bm;   // Enable UART0 Tx interrupt
+}
+
+
+/* USART0_printChar --- helper function to make 'stdio' functions work */
+
+static int USART0_printChar(const char c, FILE *stream)
+{
+   if (c == '\n')
+      UART0TxByte('\r');
+
+   UART0TxByte(c);
+
+   return (0);
+}
+
+static FILE USART_stream = FDEV_SETUP_STREAM(USART0_printChar, NULL, _FDEV_SETUP_WRITE);
+
+
+/* UART0RxAvailable --- return true if a byte is available in the UART circular buffer */
+
+int UART0RxAvailable(void)
+{
+   return (U0Buf.rx.head != U0Buf.rx.tail);
 }
 
 
@@ -126,6 +242,27 @@ void setRGBLed(const int state, const uint8_t fade)
 }
 
 
+/* printDeviceID --- print the Device ID bytes as read from SIGROW */
+
+void printDeviceID(void)
+{
+   printf("Device ID = %02x %02x %02x\n", SIGROW.DEVICEID0, SIGROW.DEVICEID1, SIGROW.DEVICEID2);
+}
+
+
+int getTemp(void)
+{
+   int8_t sigrow_offset = SIGROW.TEMPSENSE1;  // Read signed value from signature row
+   uint8_t sigrow_gain = SIGROW.TEMPSENSE0;    // Read unsigned value from signature row
+   
+   uint16_t adc_reading = 0;   // ADC conversion result with 1.1 V internal reference 
+   uint32_t temp = adc_reading - sigrow_offset;temp *= sigrow_gain;  // Result might overflow 16 bit variable (10bit+8bit)
+   temp += 0x80;               // Add 1/2 to get correct rounding on division below
+   temp >>= 8;                 // Divide result to get Kelvin 
+   uint16_t temperature_in_K = temp;
+}
+
+
 int main(void)
 {
    int ledState = 0;
@@ -148,11 +285,19 @@ int main(void)
    // Switch UART pins to the alternate locations to avoid clash with PWM pins
    PORTMUX.CTRLB = PORTMUX_USART0_ALTERNATE_gc;
 
-   // Set up UART
-   USART0.CTRLA = 0;
-   USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc;
-   USART0.CTRLC = USART_CMODE_ASYNCHRONOUS_gc | USART_PMODE_DISABLED_gc | USART_SBMODE_1BIT_gc | USART_CHSIZE_8BIT_gc;
+   // Set up UART0 and associated circular buffers
+   U0Buf.tx.head = 0;
+   U0Buf.tx.tail = 0;
+   U0Buf.rx.head = 0;
+   U0Buf.rx.tail = 0;
+
    USART0.BAUD = (F_CPU * 64UL) / (16UL * BAUDRATE);
+   USART0.CTRLA = 0;
+   USART0.CTRLC = USART_CMODE_ASYNCHRONOUS_gc | USART_PMODE_DISABLED_gc | USART_SBMODE_1BIT_gc | USART_CHSIZE_8BIT_gc;
+   USART0.CTRLA |= USART_RXCIE_bm;   // Enable UART0 Rx interrupt
+   USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc;
+   
+   stdout = &USART_stream;    // Allow use of 'printf' and similar functions
    
    // Set up TCA0 for three PWM outputs
    TCA0.SINGLE.PER = 255;
@@ -175,6 +320,17 @@ int main(void)
    
    sei();   // Enable interrupts
    
+   printf("\nHello from the %s\n", "ATtiny1616");
+   printf("RSTCTRL.RSTFR = 0x%02x\n", RSTCTRL.RSTFR);
+   printf("FUSES.WDTCFG = 0x%02x\n", FUSE.WDTCFG);
+   printf("FUSES.BODCFG = 0x%02x\n", FUSE.BODCFG);
+   printf("FUSES.APPEND = 0x%02x\n", FUSE.APPEND);
+   printf("FUSES.BOOTEND = 0x%02x\n", FUSE.BOOTEND);
+   printDeviceID();
+   
+   RSTCTRL.RSTFR = RSTCTRL_UPDIRF_bm | RSTCTRL_SWRF_bm | RSTCTRL_WDRF_bm |
+                   RSTCTRL_EXTRF_bm | RSTCTRL_BORF_bm | RSTCTRL_PORF_bm;
+   
    end = millis() + 500UL;
    
    while (1) {
@@ -192,14 +348,25 @@ int main(void)
             
          setRGBLed(ledState, fade);
 
-         if (millis() > end) {
-            PORTA.OUTTGL = LED;        // LED on PA1 toggle
-            t1ou('A');
-            t1ou('B');
+         if (millis() >= end) {
             end = millis() + 500UL;
+            PORTA.OUTTGL = LED;        // LED on PA1 toggle
+            printf("millis() = %ld\n", millis());
          }
          
          Tick = 0;
+      }
+      
+      if (UART0RxAvailable()) {
+         const char ch = UART0RxByte();
+         
+         printf("UART0: %02x\n", ch);
+         switch (ch) {
+         case 'i':
+         case 'I':
+            printDeviceID();
+            break;
+         }
       }
    }
 }

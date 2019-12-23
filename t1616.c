@@ -53,6 +53,7 @@ struct UART_BUFFER
 // UART buffers
 struct UART_BUFFER U0Buf;
 
+uint8_t SavedRSTFR = 0;
 volatile uint32_t Milliseconds = 0UL;
 volatile uint8_t Tick = 0;
 
@@ -250,6 +251,41 @@ void printDeviceID(void)
 }
 
 
+/* printSerialNumber --- print the chip's unique serial number */
+
+void printSerialNumber(void)
+{
+   printf("Serial Number = %02x%02x%02x%02x%02x%02x%02x%02x%02x%02x\n",
+                           SIGROW.SERNUM0, SIGROW.SERNUM1, SIGROW.SERNUM2,
+                           SIGROW.SERNUM3, SIGROW.SERNUM4, SIGROW.SERNUM5,
+                           SIGROW.SERNUM6, SIGROW.SERNUM7, SIGROW.SERNUM8,
+                           SIGROW.SERNUM9);
+}
+
+
+/* printFuses --- print the fuse settings */
+
+void printFuses(void)
+{
+   printf("FUSES.WDTCFG = 0x%02x\n", FUSE.WDTCFG);
+   printf("FUSES.BODCFG = 0x%02x\n", FUSE.BODCFG);
+   printf("FUSES.OSCCFG = 0x%02x\n", FUSE.OSCCFG);
+   printf("FUSES.TCD0CFG = 0x%02x\n", FUSE.TCD0CFG);
+   printf("FUSES.SYSCFG0 = 0x%02x\n", FUSE.SYSCFG0);
+   printf("FUSES.SYSCFG1 = 0x%02x\n", FUSE.SYSCFG1);
+   printf("FUSES.APPEND = 0x%02x\n", FUSE.APPEND);
+   printf("FUSES.BOOTEND = 0x%02x\n", FUSE.BOOTEND);
+}
+
+
+/* printResetReason --- print the cause of the chip's reset */
+
+void printResetReason(void)
+{
+   printf("RSTCTRL.RSTFR = 0x%02x\n", SavedRSTFR);
+}
+
+
 int getTemp(void)
 {
    int8_t sigrow_offset = SIGROW.TEMPSENSE1;  // Read signed value from signature row
@@ -274,6 +310,10 @@ int main(void)
    //_PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_6X_gc | CLKCTRL_PEN_bm); // Divide-by-six
    _PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_6X_gc); // No divide-by-six
 
+   SavedRSTFR = RSTCTRL.RSTFR;
+   RSTCTRL.RSTFR = RSTCTRL_UPDIRF_bm | RSTCTRL_SWRF_bm | RSTCTRL_WDRF_bm |
+                   RSTCTRL_EXTRF_bm | RSTCTRL_BORF_bm | RSTCTRL_PORF_bm;
+   
    PORTA.DIR = PIN1_bm | PIN3_bm | PIN4_bm;
    PORTB.DIR = PIN0_bm | PIN1_bm | PIN2_bm;  // Just PB0, PB1, PB2 to outputs
    PORTC.DIR = 0;
@@ -321,15 +361,11 @@ int main(void)
    sei();   // Enable interrupts
    
    printf("\nHello from the %s\n", "ATtiny1616");
-   printf("RSTCTRL.RSTFR = 0x%02x\n", RSTCTRL.RSTFR);
-   printf("FUSES.WDTCFG = 0x%02x\n", FUSE.WDTCFG);
-   printf("FUSES.BODCFG = 0x%02x\n", FUSE.BODCFG);
-   printf("FUSES.APPEND = 0x%02x\n", FUSE.APPEND);
-   printf("FUSES.BOOTEND = 0x%02x\n", FUSE.BOOTEND);
+   printResetReason();
+   printFuses();
    printDeviceID();
+   printSerialNumber();
    
-   RSTCTRL.RSTFR = RSTCTRL_UPDIRF_bm | RSTCTRL_SWRF_bm | RSTCTRL_WDRF_bm |
-                   RSTCTRL_EXTRF_bm | RSTCTRL_BORF_bm | RSTCTRL_PORF_bm;
    
    end = millis() + 500UL;
    
@@ -362,9 +398,21 @@ int main(void)
          
          printf("UART0: %02x\n", ch);
          switch (ch) {
+         case 'f':
+         case 'F':
+            printFuses();
+            break;
          case 'i':
          case 'I':
             printDeviceID();
+            break;
+         case 'n':
+         case 'N':
+            printSerialNumber();
+            break;
+         case 'r':
+         case 'R':
+            printResetReason();
             break;
          }
       }

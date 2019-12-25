@@ -14,12 +14,20 @@
 #define BAUDRATE (9600)
 #define BAUD_SETTING ((F_CPU / (BAUDRATE * 16UL)) - 1)
 
-void t1ou(const int ch)
+void t1ou0(const int ch)
 {
    while ((UCSR0A & (1 << UDRE0)) == 0)
       ;
       
    UDR0 = ch;
+}
+
+void t1ou1(const int ch)
+{
+   while ((UCSR1A & (1 << UDRE1)) == 0)
+      ;
+      
+   UDR1 = ch;
 }
 
 int main(void)
@@ -30,13 +38,21 @@ int main(void)
    DDRB |= (1 << LED) | (1 << LED_R) | (1 << LED_G) | (1 << LED_B);
    PORTB = 0;  // ALl LEDs off
    
-   // Set baud rate
+   // Set baud rate on UART0
    UBRR0H = (uint8_t)(BAUD_SETTING >> 8); 
    UBRR0L = (uint8_t)(BAUD_SETTING);
    // Enable receive and transmit
    UCSR0B = (1 << RXEN0) | (1 << TXEN0);
    // Set frame format
    UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);  // Async 8N1
+
+   // Set baud rate on UART1
+   UBRR1H = (uint8_t)(BAUD_SETTING >> 8); 
+   UBRR1L = (uint8_t)(BAUD_SETTING);
+   // Enable receive and transmit
+   UCSR1B = (1 << RXEN1) | (1 << TXEN1);
+   // Set frame format
+   UCSR1C = (1 << UCSZ10) | (1 << UCSZ11);  // Async 8N1
 
 #if 0
    // Config Timer 0 for PWM
@@ -51,8 +67,11 @@ int main(void)
    OCR1B = 0x80;
 #endif
 
-   t1ou('\r');
-   t1ou('\n');
+   t1ou0('\r');
+   t1ou0('\n');
+   
+   t1ou1('\r');
+   t1ou1('\n');
    
    while (1) {
       if (i & 1)
@@ -75,8 +94,11 @@ int main(void)
       // Switch LED on
       PORTB |= 1 << LED;
 
-      t1ou('U');
-      t1ou('U');
+      t1ou0('U');
+      t1ou0('U');
+
+      t1ou1('U');
+      t1ou1('U');
 
       _delay_ms(500);
       
@@ -85,8 +107,11 @@ int main(void)
       // Switch LED off
       PORTB &= ~(1 << LED);
 
-      t1ou('A');
-      t1ou('B');
+      t1ou0('A');
+      t1ou0('B');
+      
+      t1ou1('C');
+      t1ou1('D');
       
       _delay_ms(500);
       

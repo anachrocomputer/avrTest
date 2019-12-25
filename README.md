@@ -53,7 +53,8 @@ On the ATtiny1616, an RGB LED should fade between colours
 using PWM.
 In addition, a 500Hz square wave should be generated on pin PA4.
 
-On the ATtiny2313, ATtiny1616, ATmega328P and ATmega1284P, the serial port
-should transmit a message at 9600 baud.
-In the case of the ATmega1284P, the message will only appear on UART0.
+On the ATtiny2313, ATtiny1616, ATmega328P and ATmega1284P,
+the serial port(s) should transmit a message at 9600 baud.
+In the case of the ATmega1284P, a slightly different message will
+appear on UART0 and UART1.
 The message will be improved in a future version of the code.

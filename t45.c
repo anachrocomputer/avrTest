@@ -7,8 +7,13 @@
 
 #define LED PB4
 
+uint8_t SavedMCUSR = 0;
+
 int main(void)
 {
+   SavedMCUSR = MCUSR;
+   MCUSR = 0;
+   
    // Set Pin 3 (PB4) as an output pin.
    DDRB |= 1 << LED;
 

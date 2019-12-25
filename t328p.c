@@ -14,6 +14,8 @@
 #define BAUDRATE (9600)
 #define BAUD_SETTING ((F_CPU / (BAUDRATE * 16UL)) - 1)
 
+uint8_t SavedMCUSR = 0;
+
 void t1ou(const int ch)
 {
    while ((UCSR0A & (1 << UDRE0)) == 0)
@@ -25,6 +27,9 @@ void t1ou(const int ch)
 int main(void)
 {
    int i = 0;
+   
+   SavedMCUSR = MCUSR;
+   MCUSR = 0;
    
    // Set up output pins
    DDRB |= (1 << LED) | (1 << LED_R) | (1 << LED_G) | (1 << LED_B);

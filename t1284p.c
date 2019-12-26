@@ -2,6 +2,7 @@
 #define F_CPU 20000000UL
 #endif
 
+#include <stdio.h>
 #include <avr/io.h>
 #include <util/delay.h>
 
@@ -32,6 +33,30 @@ void t1ou1(const int ch)
    UDR1 = ch;
 }
 
+
+/* USART0_printChar --- helper function to make 'stdio' functions work */
+
+static int USART0_printChar(const char c, FILE *stream)
+{
+   if (c == '\n')
+      t1ou0('\r');
+
+   t1ou0(c);
+
+   return (0);
+}
+
+static FILE USART_stream = FDEV_SETUP_STREAM(USART0_printChar, NULL, _FDEV_SETUP_WRITE);
+
+
+/* printResetReason --- print the cause of the chip's reset */
+
+void printResetReason(void)
+{
+   printf("MCUSR = %02x\n", SavedMCUSR);
+}
+
+
 int main(void)
 {
    int i = 0;
@@ -59,6 +84,8 @@ int main(void)
    // Set frame format
    UCSR1C = (1 << UCSZ10) | (1 << UCSZ11);  // Async 8N1
 
+   stdout = &USART_stream;    // Allow use of 'printf' and similar functions
+
 #if 0
    // Config Timer 0 for PWM
    TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << WGM00);
@@ -72,12 +99,12 @@ int main(void)
    OCR1B = 0x80;
 #endif
 
-   t1ou0('\r');
-   t1ou0('\n');
-   
    t1ou1('\r');
    t1ou1('\n');
-   
+
+   printf("\nHello from the %s\n", "ATmega1284P");
+   printResetReason();
+
    while (1) {
       if (i & 1)
          PORTB |= (1 << LED_R);

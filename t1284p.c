@@ -144,9 +144,9 @@ void UART0TxByte(const uint8_t data)
 static int USART0_printChar(const char c, FILE *stream)
 {
    if (c == '\n')
-      t1ou0('\r');
+      UART0TxByte('\r');
 
-   t1ou0(c);
+   UART0TxByte(c);
 
    return (0);
 }

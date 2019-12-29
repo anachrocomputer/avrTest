@@ -1,3 +1,5 @@
+/* t1284p --- test code for ATmega1284P                     2019-11-26 */
+
 #ifndef F_CPU
 #define F_CPU 20000000UL
 #endif
@@ -52,6 +54,8 @@ struct UART_BUFFER
 struct UART_BUFFER U0Buf;
 
 uint8_t SavedMCUSR = 0;
+volatile uint32_t Milliseconds = 0UL;
+volatile uint8_t Tick = 0;
 
 
 /* USART0_RX_vect --- ISR for USART0 Receive Complete, used for Rx */
@@ -91,6 +95,33 @@ ISR(USART0_UDRE_vect)
    }
 }
 
+
+/* TIMER1_COMPA_vect --- ISR for Timer/Counter 1 overflow, used for 1ms ticker */
+
+ISR(TIMER1_COMPA_vect)
+{
+   Milliseconds++;
+   Tick = 1;
+   PINB = (1 << PB1);         // DEBUG: 500Hz on PB1 pin
+}
+
+
+/* millis --- return milliseconds since reset */
+
+uint32_t millis(void)
+{
+   uint32_t ms;
+   
+   cli();
+   ms = Milliseconds;
+   sei();
+   
+   return (ms);
+}
+
+
+/* t1ou0 --- transmit one character to UART0 by polling */
+
 void t1ou0(const int ch)
 {
    while ((UCSR0A & (1 << UDRE0)) == 0)
@@ -98,6 +129,9 @@ void t1ou0(const int ch)
       
    UDR0 = ch;
 }
+
+
+/* t1ou1 --- transmit one character to UART1 by polling */
 
 void t1ou1(const int ch)
 {
@@ -173,15 +207,21 @@ void printResetReason(void)
 int main(void)
 {
    int i = 0;
+   uint32_t end;
    
    SavedMCUSR = MCUSR;
    MCUSR = 0;
    
    // Set up output pins
-   DDRB |= (1 << LED) | (1 << LED_R) | (1 << LED_G) | (1 << LED_B);
+   DDRB |= (1 << LED) | (1 << LED_R) | (1 << LED_G) | (1 << LED_B) | (1 << PB1);
    PORTB = 0;  // ALl LEDs off
    
-   // Set baud rate on UART0
+   // Set up UART0 and associated circular buffers
+   U0Buf.tx.head = 0;
+   U0Buf.tx.tail = 0;
+   U0Buf.rx.head = 0;
+   U0Buf.rx.tail = 0;
+
    UBRR0H = (uint8_t)(BAUD_SETTING >> 8); 
    UBRR0L = (uint8_t)(BAUD_SETTING);
    // Enable receive and transmit
@@ -199,17 +239,20 @@ int main(void)
 
    stdout = &USART_stream;    // Allow use of 'printf' and similar functions
 
+   // Set up Timer/Counter 1 for regular 1ms interrupt
+   TCCR1A = 0;             // WGM11 and WGM10 are set to 0 for CTC mode
+   TCCR1B = (1 << WGM12) | (1 << CS10);   // WGM13 set to 0 and WGM12 set to 1 for CTC mode
+                                          // CS10 set to 1 for divide-by-1 prescaler
+   OCR1A = 19999;                // 20000 counts gives 1ms
+   TCNT1 = 0;
+   TIMSK1 = (1 << OCIE1A);       // Enable interrupts
+   
 #if 0
    // Config Timer 0 for PWM
    TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << WGM00);
    TCCR0B = (1 << CS01);   // Clock source = CLK/8, start PWM
    OCR0A = 0x80;
    OCR0B = 0x80;
-   // Config Timer 1 for PWM
-   TCCR1A = (1 << COM0A1) | (1 << COM0B1) | (1 << WGM00);
-   TCCR1B = (1 << CS01);   // Clock source = CLK/8, start PWM
-   OCR1A = 0x80;
-   OCR1B = 0x80;
 #endif
 
    sei();   // Enable interrupts
@@ -220,48 +263,41 @@ int main(void)
    printf("\nHello from the %s\n", "ATmega1284P");
    printResetReason();
 
+   end = millis() + 500UL;
+   
    while (1) {
-      if (i & 1)
-         PORTB |= (1 << LED_R);
-      else
-         PORTB &= ~(1 << LED_R);
-    
-      if (i & 2)
-         PORTB |= (1 << LED_G);
-      else
-         PORTB &= ~(1 << LED_G);
-    
-      if (i & 4)
-         PORTB |= (1 << LED_B);
-      else
-         PORTB &= ~(1 << LED_B);
+      if (Tick) {
+         if (millis() >= end) {
+            end = millis() + 500UL;
+
+            PINB = (1 << LED);         // LED on PA1 toggle
+
+            if (i & 1)
+               PORTB |= (1 << LED_R);
+            else
+               PORTB &= ~(1 << LED_R);
+          
+            if (i & 2)
+               PORTB |= (1 << LED_G);
+            else
+               PORTB &= ~(1 << LED_G);
+          
+            if (i & 4)
+               PORTB |= (1 << LED_B);
+            else
+               PORTB &= ~(1 << LED_B);
+               
+            t1ou1('U');
+            t1ou1('1');
+
+            i = (i + 1) & 0x07;
+
+            printf("millis() = %ld\n", millis());
+         }
          
-//    OCR0A += 16;
-    
-      // Switch LED on
-      PORTB |= 1 << LED;
+         Tick = 0;
+      }
 
-      printf("LED ON\n");
-
-      t1ou1('U');
-      t1ou1('U');
-
-      _delay_ms(500);
-      
-//    OCR0A += 16;
-
-      // Switch LED off
-      PORTB &= ~(1 << LED);
-
-      printf("LED OFF\n");
-      
-      t1ou1('C');
-      t1ou1('D');
-      
-      _delay_ms(500);
-      
-      i = (i + 1) & 0x07;
-      
       if (UART0RxAvailable()) {
          const char ch = UART0RxByte();
          

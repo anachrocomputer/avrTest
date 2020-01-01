@@ -27,6 +27,17 @@ Various parameters in the Makefile may be altered to suit the development
 setup, e.g. the type of programmers used and the ports that they connect to.
 The full pathname to the toolchain is also configured in the Makefile.
 
+Special targets in the Makefile are provided to invoke the programming
+device(s) and write the ELF files into the Flash memory in the chips.
+These targets are called 'prog45', 'prog23', 'prog1616', 'prog328',
+and 'prog1284'.
+Only the 'prog1616' target invokes the UPDI programmer; all the others
+invoke the ISP programmer.
+
+There's a Makefile target called 'clean' that deletes the object code files
+and the ELF binary files.
+It leaves the source code files untouched, of course.
+
 ## AVR Programmers
 
 I have tested the code with two AVR programmers, an old AVRISP V2,
@@ -58,3 +69,11 @@ the serial port(s) should transmit a message at 9600 baud.
 In the case of the ATmega1284P, a slightly different message will
 appear on UART0 and UART1.
 The message will be improved in a future version of the code.
+
+## Future Enhancements
+
+* Test with other AVR chips (e.g. other 1-series ATtiny chips)
+* Add support for ATmega4809 with four UARTs
+* Add support for TPI (Tiny Programming Interface) chips (e.g. ATtiny20)
+* Add support for the very small ATtiny10 in SOT23-6 package
+* Configure and test the watchdog timer

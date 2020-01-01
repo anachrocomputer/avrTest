@@ -100,4 +100,6 @@ testupdi:
 
 # Target 'clean' will delete all object files and ELF files
 clean:
-	-rm $(OBJS) $(ELFS)
+	-rm -f $(OBJS) $(ELFS)
+
+.PHONY: clean

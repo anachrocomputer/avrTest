@@ -4,6 +4,7 @@
 ARDUINO=/home/john/Arduino/arduino-1.8.10
 
 MCU45=attiny45
+MCU20=attiny20
 MCU23=attiny2313
 MCU1616=attiny1616
 MCU328=atmega328p
@@ -21,6 +22,8 @@ DUDEFLAGS=-C $(ARDUINO)/hardware/tools/avr/etc/avrdude.conf
 # command line, e.g. make ISPPORT=/dev/ttyUSB0 prog45
 ISPPORT=/dev/ttyS4
 ISPDEV=avrispv2
+TPIPORT=USB
+TPIDEV=usbasp
 UPDIPORT=/dev/ttyUSB0
 UPDIDEV=jtag2updi
 
@@ -88,15 +91,18 @@ fuse328:
 
 .PHONY: fuse23 fuse328
 
-# Targets 'testisp' and 'testupdi' will connect to the programmer and
-# read the device ID, but not program it
+# Targets 'testisp', 'testtpi' and 'testupdi' will connect to the
+# programmer and read the device ID, but not program it
 testisp:
 	$(DUDE) $(DUDEFLAGS) -c $(ISPDEV) -P $(ISPPORT) -p $(MCU45)
+
+testtpi:
+	$(DUDE) $(DUDEFLAGS) -c $(TPIDEV) -P $(TPIPORT) -p $(MCU20)
 
 testupdi:
 	$(DUDE) $(DUDEFLAGS) -c $(UPDIDEV) -P $(UPDIPORT) -p $(MCU1616)
 
-.PHONY: testisp testupdi
+.PHONY: testisp testtpi testupdi
 
 # Target 'clean' will delete all object files and ELF files
 clean:

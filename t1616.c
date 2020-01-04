@@ -394,7 +394,7 @@ int main(void)
       }
       
       if (UART0RxAvailable()) {
-         const char ch = UART0RxByte();
+         const uint8_t ch = UART0RxByte();
          
          printf("UART0: %02x\n", ch);
          switch (ch) {

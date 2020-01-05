@@ -299,12 +299,10 @@ int getTemp(void)
 }
 
 
-int main(void)
+/* initMCU --- set up the microcontroller in general */
+
+static void initMCU(void)
 {
-   int ledState = 0;
-   uint8_t fade = 0;
-   uint32_t end;
-   
    _PROTECTED_WRITE(CLKCTRL.MCLKCTRLA, CLKCTRL_CLKSEL_OSC20M_gc); // Select 20MHz RC oscillator
    
    //_PROTECTED_WRITE(CLKCTRL.MCLKCTRLB, CLKCTRL_PDIV_6X_gc | CLKCTRL_PEN_bm); // Divide-by-six
@@ -313,7 +311,13 @@ int main(void)
    SavedRSTFR = RSTCTRL.RSTFR;
    RSTCTRL.RSTFR = RSTCTRL_UPDIRF_bm | RSTCTRL_SWRF_bm | RSTCTRL_WDRF_bm |
                    RSTCTRL_EXTRF_bm | RSTCTRL_BORF_bm | RSTCTRL_PORF_bm;
-   
+}
+
+
+/* initGPIOs --- set up the GPIO pins */
+
+static void initGPIOs(void)
+{
    PORTA.DIR = PIN1_bm | PIN3_bm | PIN4_bm;
    PORTB.DIR = PIN0_bm | PIN1_bm | PIN2_bm;  // Just PB0, PB1, PB2 to outputs
    PORTC.DIR = 0;
@@ -321,7 +325,13 @@ int main(void)
    PORTA.OUT = 0xFF;
    PORTB.OUT = LED_R;
    PORTC.OUT = 0xFF;
-   
+}
+
+
+/* initUARTs --- set up UART(s) and buffers, and connect to 'stdout' */
+
+static void initUARTs(void)
+{
    // Switch UART pins to the alternate locations to avoid clash with PWM pins
    PORTMUX.CTRLB = PORTMUX_USART0_ALTERNATE_gc;
 
@@ -338,7 +348,13 @@ int main(void)
    USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc;
    
    stdout = &USART_stream;    // Allow use of 'printf' and similar functions
-   
+}
+
+
+/* initPWM --- set up PWM channels */
+
+static void initPWM(void)
+{
    // Set up TCA0 for three PWM outputs
    TCA0.SINGLE.PER = 255;
    TCA0.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV64_gc;
@@ -349,7 +365,13 @@ int main(void)
    TCA0.SINGLE.CMP1 = 0;   // Green PWM
    TCA0.SINGLE.CMP2 = 16;  // Blue PWM
    TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
-   
+}
+
+
+/* initMillisecondTimer --- set up a timer to interrupt every millisecond */
+
+static void initMillisecondTimer(void)
+{
    // Set up TCB0 for regular 1ms interrupt
    TCB0.CTRLA = TCB_CLKSEL_CLKDIV2_gc;
    TCB0.CTRLB = TCB_CNTMODE_INT_gc;
@@ -357,6 +379,20 @@ int main(void)
    TCB0.CNT = 0;
    TCB0.INTCTRL = TCB_CAPT_bm;   // Enable interrupts
    TCB0.CTRLA |= TCB_ENABLE_bm;  // Enable timer
+}
+
+
+int main(void)
+{
+   int ledState = 0;
+   uint8_t fade = 0;
+   uint32_t end;
+   
+   initMCU();
+   initGPIOs();
+   initUARTs();
+   initPWM();
+   initMillisecondTimer();
    
    sei();   // Enable interrupts
    
@@ -365,7 +401,6 @@ int main(void)
    printFuses();
    printDeviceID();
    printSerialNumber();
-   
    
    end = millis() + 500UL;
    

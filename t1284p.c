@@ -261,20 +261,30 @@ void printResetReason(void)
 }
 
 
-int main(void)
+/* initMCU --- set up the microcontroller in general */
+
+static void initMCU(void)
 {
-   int ledState = 0;
-   uint8_t fade = 0;
-   uint32_t end;
-   
    SavedMCUSR = MCUSR;
    MCUSR = 0;
-   
+}
+
+
+/* initGPIOs --- set up the GPIO pins */
+
+static void initGPIOs(void)
+{
    // Set up output pins
    DDRB |= (1 << LED) | (1 << LED_R) | (1 << LED_G) | (1 << LED_B) | (1 << PB1);
    DDRD |= (1 << PD6) | (1 << PD7);
    PORTB = 0;  // ALl LEDs off
-   
+}
+
+
+/* initUARTs --- set up UART(s) and buffers, and connect to 'stdout' */
+
+static void initUARTs(void)
+{
    // Set up UART0 and associated circular buffers
    U0Buf.tx.head = 0;
    U0Buf.tx.tail = 0;
@@ -297,15 +307,13 @@ int main(void)
    UCSR1C = (1 << UCSZ10) | (1 << UCSZ11);  // Async 8N1
 
    stdout = &USART_stream;    // Allow use of 'printf' and similar functions
+}
 
-   // Set up Timer/Counter 1 for regular 1ms interrupt
-   TCCR1A = 0;             // WGM11 and WGM10 are set to 0 for CTC mode
-   TCCR1B = (1 << WGM12) | (1 << CS10);   // WGM13 set to 0 and WGM12 set to 1 for CTC mode
-                                          // CS10 set to 1 for divide-by-1 prescaler
-   OCR1A = 19999;                // 20000 counts gives 1ms
-   TCNT1 = 0;
-   TIMSK1 = (1 << OCIE1A);       // Enable interrupts
-   
+
+/* initPWM --- set up PWM channels */
+
+static void initPWM(void)
+{
    // Config Timer 0 for PWM
    TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << WGM00);
    TCCR0B = (1 << CS01);   // Clock source = CLK/8, start PWM
@@ -317,6 +325,34 @@ int main(void)
    TCCR2B = (1 << CS21);   // Clock source = CLK/8, start PWM
    OCR2A = 0x80;
    OCR2B = 0x80;
+}
+
+
+/* initMillisecondTimer --- set up a timer to interrupt every millisecond */
+
+static void initMillisecondTimer(void)
+{
+   // Set up Timer/Counter 1 for regular 1ms interrupt
+   TCCR1A = 0;             // WGM11 and WGM10 are set to 0 for CTC mode
+   TCCR1B = (1 << WGM12) | (1 << CS10);   // WGM13 set to 0 and WGM12 set to 1 for CTC mode
+                                          // CS10 set to 1 for divide-by-1 prescaler
+   OCR1A = 19999;                // 20000 counts gives 1ms
+   TCNT1 = 0;
+   TIMSK1 = (1 << OCIE1A);       // Enable interrupts
+}
+
+
+int main(void)
+{
+   int ledState = 0;
+   uint8_t fade = 0;
+   uint32_t end;
+
+   initMCU();
+   initGPIOs();
+   initUARTs();
+   initPWM();
+   initMillisecondTimer();
 
    sei();   // Enable interrupts
    

@@ -12,10 +12,12 @@ MCU1284=atmega1284p
 
 CC=$(ARDUINO)/hardware/tools/avr/bin/avr-gcc
 LD=$(ARDUINO)/hardware/tools/avr/bin/avr-gcc
+SZ=$(ARDUINO)/hardware/tools/avr/bin/avr-size
 DUDE=$(ARDUINO)/hardware/tools/avr/bin/avrdude
 
 CFLAGS=-c -o $@ -O3
 LDFLAGS=-o $@
+SZFLAGS=-B -d
 DUDEFLAGS=-C $(ARDUINO)/hardware/tools/avr/etc/avrdude.conf
 
 # Programming port and programming device. Can be overridden from the
@@ -36,30 +38,35 @@ all: $(ELFS)
 
 t45.elf: t45.o
 	$(LD) -mmcu=$(MCU45) $(LDFLAGS) t45.o
+	$(SZ) --mcu=$(MCU45) $(SZFLAGS) t45.elf
 
 t45.o: t45.c
 	$(CC) -mmcu=$(MCU45) $(CFLAGS) t45.c
 
 t2313.elf: t2313.o
 	$(LD) -mmcu=$(MCU23) $(LDFLAGS) t2313.o
+	$(SZ) --mcu=$(MCU23) $(SZFLAGS) t2313.elf
 
 t2313.o: t2313.c
 	$(CC) -mmcu=$(MCU23) $(CFLAGS) t2313.c
 
 t1616.elf: t1616.o
 	$(LD) -mmcu=$(MCU1616) $(LDFLAGS) t1616.o
+	$(SZ) --mcu=$(MCU1616) $(SZFLAGS) t1616.elf
 
 t1616.o: t1616.c
 	$(CC) -mmcu=$(MCU1616) $(CFLAGS) t1616.c
 
 t328p.elf: t328p.o
 	$(LD) -mmcu=$(MCU328) $(LDFLAGS) t328p.o
+	$(SZ) --mcu=$(MCU328) $(SZFLAGS) t328p.elf
 
 t328p.o: t328p.c
 	$(CC) -mmcu=$(MCU328) $(CFLAGS) t328p.c
 
 t1284p.elf: t1284p.o
 	$(LD) -mmcu=$(MCU1284) $(LDFLAGS) t1284p.o
+	$(SZ) --mcu=$(MCU1284) $(SZFLAGS) t1284p.elf
 
 t1284p.o: t1284p.c
 	$(CC) -mmcu=$(MCU1284) $(CFLAGS) t1284p.c

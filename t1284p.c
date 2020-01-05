@@ -11,7 +11,7 @@
 
 #define LED PB0
 
-#define LED_R PB2
+#define LED_R PD7
 #define LED_G PB3
 #define LED_B PB4
 
@@ -196,6 +196,63 @@ int UART0RxAvailable(void)
 }
 
 
+/* setRGBLed --- control RGB LED connected to PORT B */
+
+void setRGBLed(const int state, const uint8_t fade)
+{
+   switch (state) {
+   case 0:                    // Red fading up, blue on
+      OCR2A = fade;
+      OCR0A = 0;
+      OCR0B = 255;
+      PORTD |= (1 << LED_R);
+      PORTB &= ~(1 << LED_G);
+      PORTB &= ~(1 << LED_B);
+      break;
+   case 1:                    // Red on, blue fading down
+      OCR2A = 255;
+      OCR0A = 0;
+      OCR0B = 255 - fade;
+      PORTD |= (1 << LED_R);
+      PORTB |= (1 << LED_G);
+      PORTB &= ~(1 << LED_B);
+      break;
+   case 2:                    // Red on, green fading up
+      OCR2A = 255;
+      OCR0A = fade;
+      OCR0B = 0;
+      PORTD &= ~(1 << LED_R);
+      PORTB |= (1 << LED_G);
+      PORTB &= ~(1 << LED_B);
+      break;
+   case 3:                    // Red fading down, green on
+      OCR2A = 255 - fade;
+      OCR0A = 255;
+      OCR0B = 0;
+      PORTD &= ~(1 << LED_R);
+      PORTB |= (1 << LED_G);
+      PORTB |= (1 << LED_B);
+      break;
+   case 4:                    // Green on, blue fading up
+      OCR2A = 0;
+      OCR0A = 255;
+      OCR0B = fade;
+      PORTD &= ~(1 << LED_R);
+      PORTB &= ~(1 << LED_G);
+      PORTB |= (1 << LED_B);
+      break;
+   case 5:                    // Green fading down, blue on
+      OCR2A = 0;
+      OCR0A = 255 - fade;
+      OCR0B = 255;
+      PORTD |= (1 << LED_R);
+      PORTB &= ~(1 << LED_G);
+      PORTB |= (1 << LED_B);
+      break;
+   }
+}
+
+
 /* printResetReason --- print the cause of the chip's reset */
 
 void printResetReason(void)
@@ -206,7 +263,8 @@ void printResetReason(void)
 
 int main(void)
 {
-   int i = 0;
+   int ledState = 0;
+   uint8_t fade = 0;
    uint32_t end;
    
    SavedMCUSR = MCUSR;
@@ -214,6 +272,7 @@ int main(void)
    
    // Set up output pins
    DDRB |= (1 << LED) | (1 << LED_R) | (1 << LED_G) | (1 << LED_B) | (1 << PB1);
+   DDRD |= (1 << PD6) | (1 << PD7);
    PORTB = 0;  // ALl LEDs off
    
    // Set up UART0 and associated circular buffers
@@ -247,13 +306,17 @@ int main(void)
    TCNT1 = 0;
    TIMSK1 = (1 << OCIE1A);       // Enable interrupts
    
-#if 0
    // Config Timer 0 for PWM
    TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << WGM00);
    TCCR0B = (1 << CS01);   // Clock source = CLK/8, start PWM
    OCR0A = 0x80;
    OCR0B = 0x80;
-#endif
+
+   // Config Timer 2 for PWM
+   TCCR2A = (1 << COM2A1) | (1 << COM2B1) | (1 << WGM20);
+   TCCR2B = (1 << CS21);   // Clock source = CLK/8, start PWM
+   OCR2A = 0x80;
+   OCR2B = 0x80;
 
    sei();   // Enable interrupts
    
@@ -267,30 +330,26 @@ int main(void)
    
    while (1) {
       if (Tick) {
+         if (fade == 255) {
+            fade = 0;
+
+            if (ledState == 5)
+               ledState = 0;
+            else
+               ledState++;
+         }
+         else
+            fade++;
+            
+         setRGBLed(ledState, fade);
+
          if (millis() >= end) {
             end = millis() + 500UL;
 
             PINB = (1 << LED);         // LED on PA1 toggle
 
-            if (i & 1)
-               PORTB |= (1 << LED_R);
-            else
-               PORTB &= ~(1 << LED_R);
-          
-            if (i & 2)
-               PORTB |= (1 << LED_G);
-            else
-               PORTB &= ~(1 << LED_G);
-          
-            if (i & 4)
-               PORTB |= (1 << LED_B);
-            else
-               PORTB &= ~(1 << LED_B);
-               
             t1ou1('U');
             t1ou1('1');
-
-            i = (i + 1) & 0x07;
 
             printf("millis() = %ld\n", millis());
          }

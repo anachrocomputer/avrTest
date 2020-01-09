@@ -12,11 +12,13 @@ MCU1284=atmega1284p
 
 CC=$(ARDUINO)/hardware/tools/avr/bin/avr-gcc
 LD=$(ARDUINO)/hardware/tools/avr/bin/avr-gcc
+OC=$(ARDUINO)/hardware/tools/avr/bin/avr-objcopy
 SZ=$(ARDUINO)/hardware/tools/avr/bin/avr-size
 DUDE=$(ARDUINO)/hardware/tools/avr/bin/avrdude
 
 CFLAGS=-c -o $@ -O3
 LDFLAGS=-o $@
+OCFLAGS=-j .text -j .data -O ihex
 SZFLAGS=-B -d
 DUDEFLAGS=-C $(ARDUINO)/hardware/tools/avr/etc/avrdude.conf
 
@@ -66,6 +68,7 @@ t328p.o: t328p.c
 
 t1284p.elf: t1284p.o
 	$(LD) -mmcu=$(MCU1284) $(LDFLAGS) t1284p.o
+#$(OC) $(OCFLAGS) t1284p.elf t1284p.hex
 	$(SZ) --mcu=$(MCU1284) $(SZFLAGS) t1284p.elf
 
 t1284p.o: t1284p.c

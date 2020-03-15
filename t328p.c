@@ -24,17 +24,30 @@ void t1ou(const int ch)
    UDR0 = ch;
 }
 
-int main(void)
+
+/* initMCU --- set up the microcontroller in general */
+
+static void initMCU(void)
 {
-   int i = 0;
-   
    SavedMCUSR = MCUSR;
    MCUSR = 0;
-   
+}
+
+
+/* initGPIOs --- set up the GPIO pins */
+
+static void initGPIOs(void)
+{
    // Set up output pins
    DDRB |= (1 << LED) | (1 << LED_R) | (1 << LED_G) | (1 << LED_B);
    PORTB = 0;  // ALl LEDs off
-   
+}
+
+
+/* initUARTs --- set up UART(s) and buffers, and connect to 'stdout' */
+
+static void initUARTs(void)
+{
    // Set baud rate
    UBRR0H = (uint8_t)(BAUD_SETTING >> 8); 
    UBRR0L = (uint8_t)(BAUD_SETTING);
@@ -42,7 +55,13 @@ int main(void)
    UCSR0B = (1 << RXEN0) | (1 << TXEN0);
    // Set frame format
    UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);  // Async 8N1
+}
 
+
+/* initPWM --- set up PWM channels */
+
+static void initPWM(void)
+{
 #if 0
    // Config Timer 0 for PWM
    TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << WGM00);
@@ -55,6 +74,17 @@ int main(void)
    OCR1A = 0x80;
    OCR1B = 0x80;
 #endif
+}
+
+
+int main(void)
+{
+   int i = 0;
+   
+   initMCU();
+   initGPIOs();
+   initUARTs();
+   initPWM();
 
    t1ou('\r');
    t1ou('\n');

@@ -19,7 +19,7 @@ ISR(TIMER1_COMPA_vect)
 {
    Milliseconds++;
    Tick = 1;
-   PINB = (1 << PB1);         // DEBUG: 500Hz on PB1 pin
+   PINB = (1 << PB2);         // DEBUG: 500Hz on PB2 pin
 }
 
 
@@ -51,8 +51,27 @@ static void initMCU(void)
 static void initGPIOs(void)
 {
    // Set Pin 3 (PB4) and Pin 6 (PB1) as output pins
-   DDRB |= (1 << LED) | (1 << PB1);
+   DDRB |= (1 << LED) | (1 << PB2) | (1 << PB1) | (1 << PB0);
    PORTB = 0;  // ALl LEDs off
+}
+
+
+/* initPWM --- set up PWM channels */
+
+static void initPWM(void)
+{
+   // Config Timer 0 for PWM
+   TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << WGM00);
+   TCCR0B = (1 << CS01);   // Clock source = CLK/8, start PWM
+   OCR0A = 0x80;
+   OCR0B = 0x80;
+#if 0
+   // Config Timer 1 for PWM
+   TCCR1A = (1 << COM0A1) | (1 << COM0B1) | (1 << WGM00);
+   TCCR1B = (1 << CS01);   // Clock source = CLK/8, start PWM
+   OCR1A = 0x80;
+   OCR1B = 0x80;
+#endif
 }
 
 
@@ -72,6 +91,7 @@ int main(void)
 {
    initMCU();
    initGPIOs();
+   initPWM();
    initMillisecondTimer();
 
    sei();   // Enable interrupts
@@ -80,10 +100,16 @@ int main(void)
       // Switch LED on
       PORTB |= 1 << LED;
 
+      OCR0A += 16;
+      OCR0B -= 16;
+      
       _delay_ms(500);
 
       // Switch LED off
       PORTB &= ~(1 << LED);
+      
+      OCR0A += 16;
+      OCR0B -= 16;
 
       _delay_ms(500);
    }

@@ -1,7 +1,10 @@
+/* t2313 --- test code for ATtiny2313                      2019-11-26 */
+
 #ifndef F_CPU
 #define F_CPU 8000000UL
 #endif
 
+#include <stdio.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
 #include <util/delay.h>
@@ -15,9 +18,82 @@
 #define BAUDRATE (9600)
 #define BAUD_SETTING ((F_CPU / (BAUDRATE * 16UL)) - 1)
 
+#define UART_RX_BUFFER_SIZE  (16)
+#define UART_RX_BUFFER_MASK (UART_RX_BUFFER_SIZE - 1)
+#if (UART_RX_BUFFER_SIZE & UART_RX_BUFFER_MASK) != 0
+#error UART_RX_BUFFER_SIZE must be a power of two and <= 256
+#endif
+
+#define UART_TX_BUFFER_SIZE  (16)
+#define UART_TX_BUFFER_MASK (UART_TX_BUFFER_SIZE - 1)
+#if (UART_TX_BUFFER_SIZE & UART_TX_BUFFER_MASK) != 0
+#error UART_TX_BUFFER_SIZE must be a power of two and <= 256
+#endif
+
+struct UART_RX_BUFFER
+{
+    volatile uint8_t head;
+    volatile uint8_t tail;
+    uint8_t buf[UART_RX_BUFFER_SIZE];
+};
+
+struct UART_TX_BUFFER
+{
+    volatile uint8_t head;
+    volatile uint8_t tail;
+    uint8_t buf[UART_TX_BUFFER_SIZE];
+};
+
+struct UART_BUFFER
+{
+    struct UART_TX_BUFFER tx;
+    struct UART_RX_BUFFER rx;
+};
+
+// UART buffers
+struct UART_BUFFER U0Buf;
+
 uint8_t SavedMCUSR = 0;
 volatile uint32_t Milliseconds = 0UL;
 volatile uint8_t Tick = 0;
+
+
+/* USART_RX_vect --- ISR for USART Receive Complete, used for Rx */
+
+ISR(USART_RX_vect)
+{
+   const uint8_t tmphead = (U0Buf.rx.head + 1) & UART_RX_BUFFER_MASK;
+   const uint8_t ch = UDR;   // Read received byte from UART
+   
+   if (tmphead == U0Buf.rx.tail)   // Is receive buffer full?
+   {
+       // Buffer is full; discard new byte
+   }
+   else
+   {
+      U0Buf.rx.head = tmphead;
+      U0Buf.rx.buf[tmphead] = ch;   // Store byte in buffer
+   }
+}
+
+
+/* USART_UDRE_vect --- ISR for USART Data Register Empty, used for Tx */
+
+ISR(USART_UDRE_vect)
+{
+   if (U0Buf.tx.head != U0Buf.tx.tail) // Is there anything to send?
+   {
+      const uint8_t tmptail = (U0Buf.tx.tail + 1) & UART_TX_BUFFER_MASK;
+      
+      U0Buf.tx.tail = tmptail;
+
+      UDR = U0Buf.tx.buf[tmptail];    // Transmit one byte
+   }
+   else
+   {
+      UCSRB &= ~(1 << UDRIE);  // Nothing left to send; disable Tx interrupt
+   }
+}
 
 
 /* TIMER1_COMPA_vect --- ISR for Timer/Counter 1 overflow, used for 1ms ticker */
@@ -30,13 +106,68 @@ ISR(TIMER1_COMPA_vect)
 }
 
 
-void t1ou(const int ch)
+/* UART0RxByte --- read one character from the UART via the circular buffer */
+
+uint8_t UART0RxByte(void)
 {
-   while ((UCSRA & (1 << UDRE)) == 0)
-      ;
-      
-   UDR = ch;
+   const uint8_t tmptail = (U0Buf.rx.tail + 1) & UART_RX_BUFFER_MASK;
+   
+   while (U0Buf.rx.head == U0Buf.rx.tail)  // Wait, if buffer is empty
+       ;
+   
+   U0Buf.rx.tail = tmptail;
+   
+   return (U0Buf.rx.buf[tmptail]);
 }
+
+
+/* UART0TxByte --- send one character to the UART via the circular buffer */
+
+void UART0TxByte(const uint8_t data)
+{
+   const uint8_t tmphead = (U0Buf.tx.head + 1) & UART_TX_BUFFER_MASK;
+   
+   while (tmphead == U0Buf.tx.tail)   // Wait, if buffer is full
+       ;
+
+   U0Buf.tx.buf[tmphead] = data;
+   U0Buf.tx.head = tmphead;
+
+   UCSRB |= (1 << UDRIE);   // Enable UART Tx interrupt
+}
+
+
+/* USART0_printChar --- helper function to make 'stdio' functions work */
+
+static int USART0_printChar(const char c, FILE *stream)
+{
+   if (c == '\n')
+      UART0TxByte('\r');
+
+   UART0TxByte(c);
+
+   return (0);
+}
+
+static FILE USART_stream = FDEV_SETUP_STREAM(USART0_printChar, NULL, _FDEV_SETUP_WRITE);
+
+
+/* UART0RxAvailable --- return true if a byte is available in the UART circular buffer */
+
+int UART0RxAvailable(void)
+{
+   return (U0Buf.rx.head != U0Buf.rx.tail);
+}
+
+
+/* printResetReason --- print the cause of the chip's reset */
+
+void printResetReason(void)
+{
+// TODO: make this work without calling 'printf()'
+// printf("MCUSR = %02x\n", SavedMCUSR);
+}
+
 
 /* initMCU --- set up the microcontroller in general */
 
@@ -61,13 +192,21 @@ static void initGPIOs(void)
 
 static void initUARTs(void)
 {
+   // Set up UART0 and associated circular buffers
+   U0Buf.tx.head = 0;
+   U0Buf.tx.tail = 0;
+   U0Buf.rx.head = 0;
+   U0Buf.rx.tail = 0;
+
    // Set baud rate
    UBRRH = (uint8_t)(BAUD_SETTING >> 8); 
    UBRRL = (uint8_t)(BAUD_SETTING);
    // Enable receive and transmit
-   UCSRB = (1 << RXEN) | (1 << TXEN);
+   UCSRB = (1 << RXCIE) | (1 << RXEN) | (1 << TXEN);
    // Set frame format
    UCSRC = (1 << UCSZ0) | (1 << UCSZ1);  // Async 8N1
+
+   stdout = &USART_stream;    // Allow use of 'printf' and similar functions
 }
 
 
@@ -116,8 +255,8 @@ int main(void)
 
    sei();   // Enable interrupts
 
-   t1ou('\r');
-   t1ou('\n');
+   puts("\nHello from the ATtiny2313");
+   printResetReason();
    
    while (1) {
       if (i & 1)
@@ -140,8 +279,7 @@ int main(void)
       // Switch LED on
       PORTB |= 1 << LED;
 
-      t1ou('U');
-      t1ou('U');
+      fputs("UU", stdout);
 
       _delay_ms(500);
       
@@ -150,8 +288,7 @@ int main(void)
       // Switch LED off
       PORTB &= ~(1 << LED);
 
-      t1ou('A');
-      t1ou('B');
+      fputs("AB", stdout);
       
       _delay_ms(500);
       

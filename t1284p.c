@@ -52,6 +52,7 @@ struct UART_BUFFER
 
 // UART buffers
 struct UART_BUFFER U0Buf;
+struct UART_BUFFER U1Buf;
 
 uint8_t SavedMCUSR = 0;
 volatile uint32_t Milliseconds = 0UL;
@@ -92,6 +93,44 @@ ISR(USART0_UDRE_vect)
    else
    {
       UCSR0B &= ~(1 << UDRIE0);  // Nothing left to send; disable Tx interrupt
+   }
+}
+
+
+/* USART1_RX_vect --- ISR for USART1 Receive Complete, used for Rx */
+
+ISR(USART1_RX_vect)
+{
+   const uint8_t tmphead = (U1Buf.rx.head + 1) & UART_RX_BUFFER_MASK;
+   const uint8_t ch = UDR1;  // Read received byte from UART
+   
+   if (tmphead == U1Buf.rx.tail)   // Is receive buffer full?
+   {
+       // Buffer is full; discard new byte
+   }
+   else
+   {
+      U1Buf.rx.head = tmphead;
+      U1Buf.rx.buf[tmphead] = ch;   // Store byte in buffer
+   }
+}
+
+
+/* USART1_UDRE_vect --- ISR for USART1 Data Register Empty, used for Tx */
+
+ISR(USART1_UDRE_vect)
+{
+   if (U1Buf.tx.head != U1Buf.tx.tail) // Is there anything to send?
+   {
+      const uint8_t tmptail = (U1Buf.tx.tail + 1) & UART_TX_BUFFER_MASK;
+      
+      U1Buf.tx.tail = tmptail;
+
+      UDR1 = U1Buf.tx.buf[tmptail];    // Transmit one byte
+   }
+   else
+   {
+      UCSR1B &= ~(1 << UDRIE1);  // Nothing left to send; disable Tx interrupt
    }
 }
 
@@ -188,11 +227,50 @@ static int USART0_printChar(const char c, FILE *stream)
 static FILE USART_stream = FDEV_SETUP_STREAM(USART0_printChar, NULL, _FDEV_SETUP_WRITE);
 
 
-/* UART0RxAvailable --- return true if a byte is available in the UART circular buffer */
+/* UART0RxAvailable --- return true if a byte is available in the UART0 circular buffer */
 
 int UART0RxAvailable(void)
 {
    return (U0Buf.rx.head != U0Buf.rx.tail);
+}
+
+
+/* UART1RxByte --- read one character from UART1 via the circular buffer */
+
+uint8_t UART1RxByte(void)
+{
+   const uint8_t tmptail = (U1Buf.rx.tail + 1) & UART_RX_BUFFER_MASK;
+   
+   while (U1Buf.rx.head == U1Buf.rx.tail)  // Wait, if buffer is empty
+       ;
+   
+   U1Buf.rx.tail = tmptail;
+   
+   return (U1Buf.rx.buf[tmptail]);
+}
+
+
+/* UART1TxByte --- send one character to UART1 via the circular buffer */
+
+void UART1TxByte(const uint8_t data)
+{
+   const uint8_t tmphead = (U1Buf.tx.head + 1) & UART_TX_BUFFER_MASK;
+   
+   while (tmphead == U1Buf.tx.tail)   // Wait, if buffer is full
+       ;
+
+   U1Buf.tx.buf[tmphead] = data;
+   U1Buf.tx.head = tmphead;
+
+   UCSR1B |= (1 << UDRIE1);   // Enable UART1 Tx interrupt
+}
+
+
+/* UART1RxAvailable --- return true if a byte is available in the UART1 circular buffer */
+
+int UART1RxAvailable(void)
+{
+   return (U1Buf.rx.head != U1Buf.rx.tail);
 }
 
 
@@ -298,11 +376,16 @@ static void initUARTs(void)
    // Set frame format
    UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);  // Async 8N1
 
-   // Set baud rate on UART1
+   // Set up UART1 and associated circular buffers
+   U1Buf.tx.head = 0;
+   U1Buf.tx.tail = 0;
+   U1Buf.rx.head = 0;
+   U1Buf.rx.tail = 0;
+
    UBRR1H = (uint8_t)(BAUD_SETTING >> 8); 
    UBRR1L = (uint8_t)(BAUD_SETTING);
    // Enable receive and transmit
-   UCSR1B = (1 << RXEN1) | (1 << TXEN1);
+   UCSR1B = (1 << RXCIE1) | (1 << RXEN1) | (1 << TXEN1);
    // Set frame format
    UCSR1C = (1 << UCSZ10) | (1 << UCSZ11);  // Async 8N1
 
@@ -356,8 +439,8 @@ int main(void)
 
    sei();   // Enable interrupts
    
-   t1ou1('\r');
-   t1ou1('\n');
+   UART1TxByte('\r');
+   UART1TxByte('\n');
 
    printf("\nHello from the %s\n", "ATmega1284P");
    printResetReason();
@@ -384,8 +467,15 @@ int main(void)
 
             PINB = (1 << LED);         // LED on PA1 toggle
 
-            t1ou1('U');
-            t1ou1('1');
+            UART1TxByte('U');
+            UART1TxByte('1');
+            UART1TxByte(' ');
+            UART1TxByte('1');
+            UART1TxByte('2');
+            UART1TxByte('8');
+            UART1TxByte('4');
+            UART1TxByte('P');
+            UART1TxByte(' ');
 
             printf("millis() = %ld\n", millis());
          }

@@ -14,6 +14,7 @@ At present, there's only support for the ATtiny45, the ATtiny2313,
 the ATtiny1616, the ATmega328P and the ATmega1284P.
 The main reason for this choice of chips is that I have dev boards
 for those chips that I can use for testing.
+Untested support for the ATmega4809 is included.
 
 ## AVR Toolchain
 

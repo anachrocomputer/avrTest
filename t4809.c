@@ -499,15 +499,15 @@ static void initGPIOs(void)
    PORTC.PIN6CTRL = PORT_ISC_INPUT_DISABLE_gc;
    PORTC.PIN7CTRL = PORT_ISC_INPUT_DISABLE_gc;
 
-   PORTA.DIR = PIN3_bm | PIN4_bm;
-   PORTB.DIR = PIN0_bm | PIN1_bm | PIN2_bm;  // Just PB0, PB1, PB2 to outputs
-   PORTC.DIR = 0;
-   PORTD.DIR = 0;
+   PORTA.DIR = PIN0_bm | PIN3_bm | PIN4_bm;  // For UART0, LED and 500Hz signal
+   PORTB.DIR = 0;
+   PORTC.DIR = PIN0_bm;                      // For UART1
+   PORTD.DIR = PIN0_bm | PIN1_bm | PIN2_bm;  // For the RGB LED and PWM
    PORTE.DIR = 0;
-   PORTF.DIR = 0;
+   PORTF.DIR = PIN0_bm;                      // For UART2
 
    PORTA.OUT = 0xFF;
-   PORTB.OUT = LED_R;
+   PORTB.OUT = 0xFF;
    PORTC.OUT = 0xFF;
    PORTD.OUT = 0xFF;
    PORTE.OUT = 0xFF;
@@ -581,6 +581,9 @@ static void initUARTs(void)
 
 static void initPWM(void)
 {
+   // Move PWM to PORT D, pins PD0, PD1, PD2
+   PORTMUX.TCAROUTEA = PORTMUX_TCA0_PORTD_gc;
+   
    // Set up TCA0 for three PWM outputs
    TCA0.SINGLE.PER = 255;
    TCA0.SINGLE.CTRLA = TCA_SINGLE_CLKSEL_DIV64_gc;

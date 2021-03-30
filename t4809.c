@@ -18,9 +18,9 @@
 #define LED PIN3_bm     // LED on PA3
 // 500Hz square wave on PA4
 
-#define LED_R PIN0_bm   // Red LED on PB0/WO0
-#define LED_G PIN1_bm   // Green LED on PB1/WO1
-#define LED_B PIN2_bm   // Blue LED on PB2/WO2
+#define LED_R PIN0_bm   // Red LED on PD0/WO0
+#define LED_G PIN1_bm   // Green LED on PD1/WO1
+#define LED_B PIN2_bm   // Blue LED on PD2/WO2
 
 #define BAUDRATE (9600UL)
 
@@ -366,49 +366,49 @@ void setRGBLed(const int state, const uint8_t fade)
       TCA0.SINGLE.CMP0 = fade;
       TCA0.SINGLE.CMP1 = 0;
       TCA0.SINGLE.CMP2 = 255;
-      PORTB.OUTSET = LED_R;
-      PORTB.OUTCLR = LED_G;
-      PORTB.OUTCLR = LED_B;
+      PORTD.OUTSET = LED_R;
+      PORTD.OUTCLR = LED_G;
+      PORTD.OUTCLR = LED_B;
       break;
    case 1:                    // Red on, blue fading down
       TCA0.SINGLE.CMP0 = 255;
       TCA0.SINGLE.CMP1 = 0;
       TCA0.SINGLE.CMP2 = 255 - fade;
-      PORTB.OUTSET = LED_R;
-      PORTB.OUTSET = LED_G;
-      PORTB.OUTCLR = LED_B;
+      PORTD.OUTSET = LED_R;
+      PORTD.OUTSET = LED_G;
+      PORTD.OUTCLR = LED_B;
       break;
    case 2:                    // Red on, green fading up
       TCA0.SINGLE.CMP0 = 255;
       TCA0.SINGLE.CMP1 = fade;
       TCA0.SINGLE.CMP2 = 0;
-      PORTB.OUTCLR = LED_R;
-      PORTB.OUTSET = LED_G;
-      PORTB.OUTCLR = LED_B;
+      PORTD.OUTCLR = LED_R;
+      PORTD.OUTSET = LED_G;
+      PORTD.OUTCLR = LED_B;
       break;
    case 3:                    // Red fading down, green on
       TCA0.SINGLE.CMP0 = 255 - fade;
       TCA0.SINGLE.CMP1 = 255;
       TCA0.SINGLE.CMP2 = 0;
-      PORTB.OUTCLR = LED_R;
-      PORTB.OUTSET = LED_G;
-      PORTB.OUTSET = LED_B;
+      PORTD.OUTCLR = LED_R;
+      PORTD.OUTSET = LED_G;
+      PORTD.OUTSET = LED_B;
       break;
    case 4:                    // Green on, blue fading up
       TCA0.SINGLE.CMP0 = 0;
       TCA0.SINGLE.CMP1 = 255;
       TCA0.SINGLE.CMP2 = fade;
-      PORTB.OUTCLR = LED_R;
-      PORTB.OUTCLR = LED_G;
-      PORTB.OUTSET = LED_B;
+      PORTD.OUTCLR = LED_R;
+      PORTD.OUTCLR = LED_G;
+      PORTD.OUTSET = LED_B;
       break;
    case 5:                    // Green fading down, blue on
       TCA0.SINGLE.CMP0 = 0;
       TCA0.SINGLE.CMP1 = 255 - fade;
       TCA0.SINGLE.CMP2 = 255;
-      PORTB.OUTSET = LED_R;
-      PORTB.OUTCLR = LED_G;
-      PORTB.OUTSET = LED_B;
+      PORTD.OUTSET = LED_R;
+      PORTD.OUTCLR = LED_G;
+      PORTD.OUTSET = LED_B;
       break;
    }
 }

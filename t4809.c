@@ -13,14 +13,14 @@
 // UART1 RxD on PC1 (default)
 // UART2 TxD on PF0 (default)
 // UART2 RxD on PF1 (default)
-// UART3 TxD on PB4 (alternate)
-// UART3 RxD on PB5 (alternate)
-#define LED PIN3_bm     // LED on PA3
-// 500Hz square wave on PA4
+// UART3 TxD on PB0 (default)
+// UART3 RxD on PB1 (default)
+#define LED    PIN3_bm  // Blinking LED on PA3
+#define SQWAVE PIN4_bm  // 500Hz square wave on PA4
 
-#define LED_R PIN0_bm   // Red LED on PD0/WO0
-#define LED_G PIN1_bm   // Green LED on PD1/WO1
-#define LED_B PIN2_bm   // Blue LED on PD2/WO2
+#define LED_R PIN3_bm   // Red LED on PD3
+#define LED_G PIN4_bm   // Green LED on PD4
+#define LED_B PIN5_bm   // Blue LED on PD5
 
 #define BAUDRATE (9600UL)
 
@@ -226,7 +226,7 @@ ISR(TCB0_INT_vect)
    TCB0.INTFLAGS = TCB_CAPT_bm;
    Milliseconds++;
    Tick = 1;
-   PORTA.OUTTGL = PIN4_bm;    // DEBUG: 500Hz on PA4 pin
+   PORTA.OUTTGL = SQWAVE;     // DEBUG: 500Hz on PA4 pin
 }
 
 
@@ -499,12 +499,12 @@ static void initGPIOs(void)
    PORTC.PIN6CTRL = PORT_ISC_INPUT_DISABLE_gc;
    PORTC.PIN7CTRL = PORT_ISC_INPUT_DISABLE_gc;
 
-   PORTA.DIR = PIN0_bm | PIN3_bm | PIN4_bm;  // For UART0, LED and 500Hz signal
+   PORTA.DIR = LED | SQWAVE;           // For LED and 500Hz signal
    PORTB.DIR = 0;
-   PORTC.DIR = PIN0_bm;                      // For UART1
-   PORTD.DIR = PIN0_bm | PIN1_bm | PIN2_bm;  // For the RGB LED and PWM
+   PORTC.DIR = 0;
+   PORTD.DIR = LED_R | LED_G | LED_B;  // For digital RGB LED
    PORTE.DIR = 0;
-   PORTF.DIR = PIN0_bm;                      // For UART2
+   PORTF.DIR = 0;
 
    PORTA.OUT = 0xFF;
    PORTB.OUT = 0xFF;
@@ -519,11 +519,11 @@ static void initGPIOs(void)
 
 static void initUARTs(void)
 {
-   // Switch all UART pins to the default locations apart from UART3
+   // Switch all UART pins to the default locations
    PORTMUX.USARTROUTEA = PORTMUX_USART0_DEFAULT_gc |
                          PORTMUX_USART1_DEFAULT_gc |
                          PORTMUX_USART2_DEFAULT_gc |
-                         PORTMUX_USART3_ALT1_gc;
+                         PORTMUX_USART3_DEFAULT_gc;
 
    // Set up UART0 and associated circular buffers
    U0Buf.tx.head = 0;
@@ -537,6 +537,9 @@ static void initUARTs(void)
    USART0.CTRLA |= USART_RXCIE_bm;   // Enable UART0 Rx interrupt
    USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc;
    
+   // Enable UART0 TxD pin
+   PORTA.DIR |= PIN0_bm;
+   
    // Set up UART1 and associated circular buffers
    U1Buf.tx.head = 0;
    U1Buf.tx.tail = 0;
@@ -548,6 +551,9 @@ static void initUARTs(void)
    USART1.CTRLC = USART_CMODE_ASYNCHRONOUS_gc | USART_PMODE_DISABLED_gc | USART_SBMODE_1BIT_gc | USART_CHSIZE_8BIT_gc;
    USART1.CTRLA |= USART_RXCIE_bm;   // Enable UART1 Rx interrupt
    USART1.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc;
+   
+   // Enable UART1 TxD pin
+   PORTC.DIR |= PIN0_bm;
    
    // Set up UART2 and associated circular buffers
    U2Buf.tx.head = 0;
@@ -561,6 +567,9 @@ static void initUARTs(void)
    USART2.CTRLA |= USART_RXCIE_bm;   // Enable UART2 Rx interrupt
    USART2.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc;
    
+   // Enable UART2 TxD pin
+   PORTF.DIR |= PIN0_bm;
+   
    // Set up UART3 and associated circular buffers
    U3Buf.tx.head = 0;
    U3Buf.tx.tail = 0;
@@ -572,6 +581,9 @@ static void initUARTs(void)
    USART3.CTRLC = USART_CMODE_ASYNCHRONOUS_gc | USART_PMODE_DISABLED_gc | USART_SBMODE_1BIT_gc | USART_CHSIZE_8BIT_gc;
    USART3.CTRLA |= USART_RXCIE_bm;   // Enable UART3 Rx interrupt
    USART3.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc;
+   
+   // Enable UART3 TxD pin (inaccessible on DIP-40 version)
+   PORTB.DIR |= PIN0_bm;
    
    stdout = &USART_stream;    // Allow use of 'printf' and similar functions
 }
@@ -592,8 +604,11 @@ static void initPWM(void)
    TCA0.SINGLE.CTRLD = 0;
    TCA0.SINGLE.CMP0 = 0;   // Red PWM
    TCA0.SINGLE.CMP1 = 0;   // Green PWM
-   TCA0.SINGLE.CMP2 = 16;  // Blue PWM
+   TCA0.SINGLE.CMP2 = 0;   // Blue PWM
    TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
+   
+   // Enable output on PWM pins
+   PORTD.DIR |= PIN0_bm | PIN1_bm | PIN2_bm;
 }
 
 

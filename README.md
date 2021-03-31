@@ -11,10 +11,9 @@ The 'Makefile' also has targets for the AVR programming tool 'avrdude'.
 ## Chips Supported
 
 At present, there's only support for the ATtiny45, the ATtiny2313,
-the ATtiny1616, the ATmega328P and the ATmega1284P.
+the ATtiny1616, the ATmega4809, the ATmega328P and the ATmega1284P.
 The main reason for this choice of chips is that I have dev boards
 for those chips that I can use for testing.
-Untested support for the ATmega4809 is included.
 
 ## AVR Toolchain
 
@@ -31,9 +30,9 @@ The full pathname to the toolchain is also configured in the Makefile.
 Special targets in the Makefile are provided to invoke the programming
 device(s) and write the ELF files into the Flash memory in the chips.
 These targets are called 'prog45', 'prog23', 'prog1616', 'prog328',
-and 'prog1284'.
-Only the 'prog1616' target invokes the UPDI programmer; all the others
-invoke the ISP programmer.
+'prog4809', and 'prog1284'.
+The 'prog1616' and 'prog4809' targets invoke the UPDI programmer;
+all the others invoke the ISP programmer.
 
 There's a Makefile target called 'clean' that deletes the object code files
 and the ELF binary files.
@@ -65,16 +64,28 @@ On the ATtiny1616, an RGB LED should fade between colours
 using PWM.
 In addition, a 500Hz square wave should be generated on pin PA4.
 
+On the ATmega4809, an RGB LED on the PWM pins should fade between colours
+while another RGB LED on GPIO pins of PORTD will switch between colours.
+In addition, a 500Hz square wave should be generated on pin PA4.
+
 On the ATtiny2313, ATtiny1616, ATmega328P and ATmega1284P,
 the serial port(s) should transmit a message at 9600 baud.
 In the case of the ATmega1284P, a slightly different message will
-appear on UART0 and UART1.
-The message will be improved in a future version of the code.
+appear on UART1.
+The ATmega4809 also produces a different message on each of its four
+UARTs, but with a DIP-40 chip UART3 is inaccessible (only the 48-pin
+surface-mount versions can use all four UARTs).
+
+On the ATmega1284P, ATtiny1616 and ATmega4809,
+serial input is accepted on UART0.
+All the chips accept a letter 'r' to print the reset reason.
+The ATtiny1616 and ATmega4809 also accept 'i' to print the chip ID
+bytes, 'n' to print the unique serial number and 'f' to print the
+values of the fuse registers.
 
 ## Future Enhancements
 
 * Test with other AVR chips (e.g. other 1-series ATtiny chips)
-* Add support for ATmega4809 with four UARTs
 * Add support for TPI (Tiny Programming Interface) chips (e.g. ATtiny20)
 * Add support for the very small ATtiny10 in SOT23-6 package
 * Configure and test the watchdog timer

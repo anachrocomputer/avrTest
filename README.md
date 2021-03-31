@@ -40,7 +40,8 @@ It leaves the source code files untouched, of course.
 
 ## AVR Programmers
 
-I have tested the code with two AVR programmers, an old AVRISP V2,
+I have tested the code with two AVR programmers:
+an old AVRISP V2,
 and a 'jtag2updi' implemented on an ATmega328P.
 
 Note that my AVRISP is an RS-232 interfaced AVRISP V2

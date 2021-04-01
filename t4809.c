@@ -538,7 +538,7 @@ static void initUARTs(void)
    USART0.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc;
    
    // Enable UART0 TxD pin
-   PORTA.DIR |= PIN0_bm;
+   PORTA.DIRSET = PIN0_bm;
    
    // Set up UART1 and associated circular buffers
    U1Buf.tx.head = 0;
@@ -553,7 +553,7 @@ static void initUARTs(void)
    USART1.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc;
    
    // Enable UART1 TxD pin
-   PORTC.DIR |= PIN0_bm;
+   PORTC.DIRSET = PIN0_bm;
    
    // Set up UART2 and associated circular buffers
    U2Buf.tx.head = 0;
@@ -568,7 +568,7 @@ static void initUARTs(void)
    USART2.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc;
    
    // Enable UART2 TxD pin
-   PORTF.DIR |= PIN0_bm;
+   PORTF.DIRSET = PIN0_bm;
    
    // Set up UART3 and associated circular buffers
    U3Buf.tx.head = 0;
@@ -583,7 +583,7 @@ static void initUARTs(void)
    USART3.CTRLB = USART_RXEN_bm | USART_TXEN_bm | USART_RXMODE_NORMAL_gc;
    
    // Enable UART3 TxD pin (inaccessible on DIP-40 version)
-   PORTB.DIR |= PIN0_bm;
+   PORTB.DIRSET = PIN0_bm;
    
    stdout = &USART_stream;    // Allow use of 'printf' and similar functions
 }
@@ -608,7 +608,7 @@ static void initPWM(void)
    TCA0.SINGLE.CTRLA |= TCA_SINGLE_ENABLE_bm;
    
    // Enable output on PWM pins
-   PORTD.DIR |= PIN0_bm | PIN1_bm | PIN2_bm;
+   PORTD.DIRSET = PIN0_bm | PIN1_bm | PIN2_bm;
 }
 
 

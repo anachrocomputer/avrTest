@@ -248,6 +248,7 @@ void setRGBLed(const int state, const uint8_t fade)
 void printDeviceID(void)
 {
    printf("Device ID = %02x %02x %02x\n", SIGROW.DEVICEID0, SIGROW.DEVICEID1, SIGROW.DEVICEID2);
+   printf("REVID = %02x\n", SYSCFG.REVID);
 }
 
 

@@ -383,10 +383,18 @@ static void initMillisecondTimer(void)
 }
 
 
+static initDAC(void)
+{
+   DAC0.CTRLA = DAC_ENABLE_bm | DAC_OUTEN_bm;
+   VREF.CTRLA = VREF_DAC0REFSEL_2V5_gc;
+}
+
+
 int main(void)
 {
    int ledState = 0;
    uint8_t fade = 0;
+   uint16_t dac = 0;
    uint32_t end;
    
    initMCU();
@@ -394,6 +402,7 @@ int main(void)
    initUARTs();
    initPWM();
    initMillisecondTimer();
+   initDAC();
    
    sei();   // Enable interrupts
    
@@ -418,6 +427,9 @@ int main(void)
          else
             fade++;
             
+         dac += 8;
+         
+         DAC0.DATA = dac >> 8;
          setRGBLed(ledState, fade);
 
          if (millis() >= end) {

@@ -383,10 +383,12 @@ static void initMillisecondTimer(void)
 }
 
 
-static initDAC(void)
+/* initDAC --- set up the 8-bit DAC and connect it to the output pin */
+
+static void initDAC(void)
 {
-   DAC0.CTRLA = DAC_ENABLE_bm | DAC_OUTEN_bm;
-   VREF.CTRLA = VREF_DAC0REFSEL_2V5_gc;
+   DAC0.CTRLA = DAC_ENABLE_bm | DAC_OUTEN_bm; // Enable DAC and pin (PA6, pin 4 of SOIC-20)
+   VREF.CTRLA = VREF_DAC0REFSEL_2V5_gc;       // Set VREF for DAC to 2.5V
 }
 
 

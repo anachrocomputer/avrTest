@@ -90,6 +90,8 @@ values of the fuse registers.
 ## Future Enhancements
 
 * Test with other AVR chips (e.g. other 1-series ATtiny chips)
+* Test with 48-pin SMD ATmega4809
+* Add support for 2-series AVRs (e.g. ATtiny1626)
 * Add support for TPI (Tiny Programming Interface) chips (e.g. ATtiny20)
 * Add support for the very small ATtiny10 in SOT23-6 package
 * Configure and test the watchdog timer

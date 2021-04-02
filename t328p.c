@@ -5,7 +5,7 @@
 #include <avr/io.h>
 #include <util/delay.h>
 
-#define LED PB0
+#define LED PB0  // Blinking LED on PB0
 
 #define LED_R PB2
 #define LED_G PB3
@@ -40,7 +40,7 @@ static void initGPIOs(void)
 {
    // Set up output pins
    DDRB |= (1 << LED) | (1 << LED_R) | (1 << LED_G) | (1 << LED_B);
-   PORTB = 0;  // ALl LEDs off
+   PORTB = 0;  // All LEDs off
 }
 
 

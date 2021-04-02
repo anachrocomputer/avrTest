@@ -6,7 +6,7 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-#define LED PB4
+#define LED PB4  // Blinking LED on PB4
 
 uint8_t SavedMCUSR = 0;
 volatile uint32_t Milliseconds = 0UL;
@@ -52,7 +52,7 @@ static void initGPIOs(void)
 {
    // Set Pin 3 (PB4) and Pin 6 (PB1) as output pins
    DDRB |= (1 << LED) | (1 << PB2) | (1 << PB1) | (1 << PB0);
-   PORTB = 0;  // ALl LEDs off
+   PORTB = 0;  // All LEDs off
 }
 
 

@@ -9,7 +9,7 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-#define LED PB0
+#define LED PB0  // Blinking LED on PB0
 
 #define LED_R PB2
 #define LED_G PB3
@@ -18,13 +18,13 @@
 #define BAUDRATE (9600)
 #define BAUD_SETTING ((F_CPU / (BAUDRATE * 16UL)) - 1)
 
-#define UART_RX_BUFFER_SIZE  (16)
+#define UART_RX_BUFFER_SIZE  (8)
 #define UART_RX_BUFFER_MASK (UART_RX_BUFFER_SIZE - 1)
 #if (UART_RX_BUFFER_SIZE & UART_RX_BUFFER_MASK) != 0
 #error UART_RX_BUFFER_SIZE must be a power of two and <= 256
 #endif
 
-#define UART_TX_BUFFER_SIZE  (16)
+#define UART_TX_BUFFER_SIZE  (32)
 #define UART_TX_BUFFER_MASK (UART_TX_BUFFER_SIZE - 1)
 #if (UART_TX_BUFFER_SIZE & UART_TX_BUFFER_MASK) != 0
 #error UART_TX_BUFFER_SIZE must be a power of two and <= 256
@@ -184,7 +184,7 @@ static void initGPIOs(void)
 {
    // Set up output pins
    DDRB |= (1 << LED) | (1 << LED_R) | (1 << LED_G) | (1 << LED_B) | (1 << PB1);
-   PORTB = 0;  // ALl LEDs off
+   PORTB = 0;  // All LEDs off
 }
 
 

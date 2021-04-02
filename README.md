@@ -58,11 +58,14 @@ All the LEDs should blink at 1Hz (500ms on, 500ms off).
 This frequency may be measured as a means of verifying correct
 clocking of the AVR chip.
 
-On the ATtiny2313, ATmega328P and ATmega1284P, an RGB LED should switch
+On the ATtiny2313 and ATmega328P, an RGB LED should switch
 between colours, including fully off and fully on (white).
 
-On the ATtiny1616, an RGB LED should fade between colours
-using PWM.
+On the ATmega1284P, an RGB LED on the PWM pins should fade between colours.
+In addition, a 500Hz square wave should be generated on pin PB1.
+
+On the ATtiny1616, an RGB LED on the PWM pins should fade between colours
+while another RGB LED on GPIO pins of PORTB will switch between colours.
 In addition, a 500Hz square wave should be generated on pin PA4.
 
 On the ATmega4809, an RGB LED on the PWM pins should fade between colours

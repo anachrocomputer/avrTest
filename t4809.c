@@ -357,7 +357,7 @@ void UART3TxByte(const uint8_t data)
 }
 
 
-/* setRGBLed --- control RGB LED connected to PORT B */
+/* setRGBLed --- control two RGB LEDs connected to PORT D */
 
 void setRGBLed(const int state, const uint8_t fade)
 {

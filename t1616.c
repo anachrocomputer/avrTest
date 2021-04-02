@@ -12,9 +12,9 @@
 #define LED    PIN3_bm  // Blinking LED on PA3
 #define SQWAVE PIN4_bm  // 500Hz square wave on PA4
 
-#define LED_R PIN0_bm   // Red LED on PB0/WO0
-#define LED_G PIN1_bm   // Green LED on PB1/WO1
-#define LED_B PIN2_bm   // Blue LED on PB2/WO2
+#define LED_R PIN3_bm   // Red LED on PB3
+#define LED_G PIN4_bm   // Green LED on PB4
+#define LED_B PIN5_bm   // Blue LED on PB5
 
 #define BAUDRATE (9600UL)
 
@@ -186,7 +186,7 @@ int UART0RxAvailable(void)
 }
 
 
-/* setRGBLed --- control RGB LED connected to PORT B */
+/* setRGBLed --- control two RGB LEDs connected to PORT B */
 
 void setRGBLed(const int state, const uint8_t fade)
 {
@@ -320,7 +320,7 @@ static void initMCU(void)
 static void initGPIOs(void)
 {
    PORTA.DIR = LED | SQWAVE;
-   PORTB.DIR = 0;
+   PORTB.DIR = LED_R | LED_G | LED_B;
    PORTC.DIR = 0;
 
    PORTA.OUT = 0xFF;

@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
 
 // UART0 TxD on PA0 (default)
 // UART0 RxD on PA1 (default)

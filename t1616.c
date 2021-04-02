@@ -5,7 +5,6 @@
 #include <stdio.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
 
 // UART TxD on PA1 (alternate)
 // UART RxD on PA2 (alternate)

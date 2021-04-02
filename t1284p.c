@@ -7,7 +7,6 @@
 #include <stdio.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
 
 #define LED    PB0  // Blinking LED on PB0
 #define SQWAVE PB1  // 500Hz square wave on PB1

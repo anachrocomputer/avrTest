@@ -1,20 +1,52 @@
+/* t328p --- test code for ATmega328P                       2019-11-26 */
+
 #ifndef F_CPU
 #define F_CPU 16000000UL
 #endif
 
+#include <stdio.h>
 #include <avr/io.h>
+#include <avr/interrupt.h>
 #include <util/delay.h>
 
-#define LED PB0  // Blinking LED on PB0
+#define LED PB0     // Blinking LED on PB0
+#define SQWAVE PB1  // 500Hz square wave on PB1
 
-#define LED_R PB2
-#define LED_G PB3
-#define LED_B PB4
+#define LED_R PB2   // Red LED on PB2
+#define LED_G PB3   // Green LED on PB3
+#define LED_B PB4   // Blue LED on PB4
 
 #define BAUDRATE (9600)
 #define BAUD_SETTING ((F_CPU / (BAUDRATE * 16UL)) - 1)
 
 uint8_t SavedMCUSR = 0;
+volatile uint32_t Milliseconds = 0UL;
+volatile uint8_t Tick = 0;
+
+
+/* TIMER1_COMPA_vect --- ISR for Timer/Counter 1 overflow, used for 1ms ticker */
+
+ISR(TIMER1_COMPA_vect)
+{
+   Milliseconds++;
+   Tick = 1;
+   PINB = (1 << SQWAVE);      // DEBUG: 500Hz on PB1 pin
+}
+
+
+/* millis --- return milliseconds since reset */
+
+uint32_t millis(void)
+{
+   uint32_t ms;
+   
+   cli();
+   ms = Milliseconds;
+   sei();
+   
+   return (ms);
+}
+
 
 void t1ou(const int ch)
 {
@@ -22,6 +54,29 @@ void t1ou(const int ch)
       ;
       
    UDR0 = ch;
+}
+
+
+/* USART0_printChar --- helper function to make 'stdio' functions work */
+
+static int USART0_printChar(const char c, FILE *stream)
+{
+   if (c == '\n')
+      t1ou('\r');
+
+   t1ou(c);
+
+   return (0);
+}
+
+static FILE USART_stream = FDEV_SETUP_STREAM(USART0_printChar, NULL, _FDEV_SETUP_WRITE);
+
+
+/* printResetReason --- print the cause of the chip's reset */
+
+void printResetReason(void)
+{
+   printf("MCUSR = %02x\n", SavedMCUSR);
 }
 
 
@@ -55,6 +110,8 @@ static void initUARTs(void)
    UCSR0B = (1 << RXEN0) | (1 << TXEN0);
    // Set frame format
    UCSR0C = (1 << UCSZ00) | (1 << UCSZ01);  // Async 8N1
+
+   stdout = &USART_stream;    // Allow use of 'printf' and similar functions
 }
 
 
@@ -77,6 +134,20 @@ static void initPWM(void)
 }
 
 
+/* initMillisecondTimer --- set up a timer to interrupt every millisecond */
+
+static void initMillisecondTimer(void)
+{
+   // Set up Timer/Counter 1 for regular 1ms interrupt
+   TCCR1A = 0;             // WGM11 and WGM10 are set to 0 for CTC mode
+   TCCR1B = (1 << WGM12) | (1 << CS10);   // WGM13 set to 0 and WGM12 set to 1 for CTC mode
+                                          // CS10 set to 1 for divide-by-1 prescaler
+   OCR1A = 15999;                // 16000 counts gives 1ms
+   TCNT1 = 0;
+   TIMSK1 = (1 << OCIE1A);       // Enable interrupts
+}
+
+
 int main(void)
 {
    int i = 0;
@@ -85,10 +156,16 @@ int main(void)
    initGPIOs();
    initUARTs();
    initPWM();
+   initMillisecondTimer();
+   
+   sei();   // Enable interrupts
 
    t1ou('\r');
    t1ou('\n');
    
+   printf("\nHello from the %s\n", "ATmega328P");
+   printResetReason();
+
    while (1) {
       if (i & 1)
          PORTB |= (1 << LED_R);

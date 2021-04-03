@@ -175,6 +175,63 @@ int UART0RxAvailable(void)
 }
 
 
+/* setRGBLed --- control RGB LED connected to PORT B */
+
+void setRGBLed(const int state, const uint8_t fade)
+{
+   switch (state) {
+   case 0:                    // Red fading up, blue on
+//    OCR2A = fade;
+//    OCR0A = 0;
+//    OCR0B = 255;
+      PORTB |= (1 << LED_R);
+      PORTB &= ~(1 << LED_G);
+      PORTB &= ~(1 << LED_B);
+      break;
+   case 1:                    // Red on, blue fading down
+//    OCR2A = 255;
+//    OCR0A = 0;
+//    OCR0B = 255 - fade;
+      PORTB |= (1 << LED_R);
+      PORTB |= (1 << LED_G);
+      PORTB &= ~(1 << LED_B);
+      break;
+   case 2:                    // Red on, green fading up
+//    OCR2A = 255;
+//    OCR0A = fade;
+//    OCR0B = 0;
+      PORTB &= ~(1 << LED_R);
+      PORTB |= (1 << LED_G);
+      PORTB &= ~(1 << LED_B);
+      break;
+   case 3:                    // Red fading down, green on
+//    OCR2A = 255 - fade;
+//    OCR0A = 255;
+//    OCR0B = 0;
+      PORTB &= ~(1 << LED_R);
+      PORTB |= (1 << LED_G);
+      PORTB |= (1 << LED_B);
+      break;
+   case 4:                    // Green on, blue fading up
+//    OCR2A = 0;
+//    OCR0A = 255;
+//    OCR0B = fade;
+      PORTB &= ~(1 << LED_R);
+      PORTB &= ~(1 << LED_G);
+      PORTB |= (1 << LED_B);
+      break;
+   case 5:                    // Green fading down, blue on
+//    OCR2A = 0;
+//    OCR0A = 255 - fade;
+//    OCR0B = 255;
+      PORTB |= (1 << LED_R);
+      PORTB &= ~(1 << LED_G);
+      PORTB |= (1 << LED_B);
+      break;
+   }
+}
+
+
 /* printResetReason --- print the cause of the chip's reset */
 
 void printResetReason(void)
@@ -258,55 +315,59 @@ static void initMillisecondTimer(void)
 
 int main(void)
 {
-   int i = 0;
-   
+   int ledState = 0;
+   uint8_t fade = 0;
+   uint32_t end;
+
    initMCU();
    initGPIOs();
    initUARTs();
    initPWM();
    initMillisecondTimer();
-   
-   sei();   // Enable interrupts
 
+   sei();   // Enable interrupts
+   
    printf("\nHello from the %s\n", "ATmega328P");
    printResetReason();
 
+   end = millis() + 500UL;
+   
    while (1) {
-      if (i & 1)
-         PORTB |= (1 << LED_R);
-      else
-         PORTB &= ~(1 << LED_R);
-    
-      if (i & 2)
-         PORTB |= (1 << LED_G);
-      else
-         PORTB &= ~(1 << LED_G);
-    
-      if (i & 4)
-         PORTB |= (1 << LED_B);
-      else
-         PORTB &= ~(1 << LED_B);
+      if (Tick) {
+         if (fade == 255) {
+            fade = 0;
+
+            if (ledState == 5)
+               ledState = 0;
+            else
+               ledState++;
+         }
+         else
+            fade++;
+            
+         setRGBLed(ledState, fade);
+
+         if (millis() >= end) {
+            end = millis() + 500UL;
+
+            PINB = (1 << LED);         // LED on PB0 toggle
+
+            printf("millis() = %ld\n", millis());
+         }
          
-//    OCR0A += 16;
-    
-      // Switch LED on
-      PORTB |= 1 << LED;
+         Tick = 0;
+      }
 
-      UART0TxByte('U');
-      UART0TxByte('U');
-
-      _delay_ms(500);
-      
-//    OCR0A += 16;
-
-      // Switch LED off
-      PORTB &= ~(1 << LED);
-
-      UART0TxByte('A');
-      UART0TxByte('B');
-      
-      _delay_ms(500);
-      
-      i = (i + 1) & 0x07;
+      if (UART0RxAvailable()) {
+         const uint8_t ch = UART0RxByte();
+         
+         printf("UART0: %02x\n", ch);
+         switch (ch) {
+         case 'r':
+         case 'R':
+            printResetReason();
+            break;
+         }
+      }
    }
 }

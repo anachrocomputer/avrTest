@@ -7,14 +7,13 @@
 #include <stdio.h>
 #include <avr/io.h>
 #include <avr/interrupt.h>
-#include <util/delay.h>
 
 #define LED    PB0  // Blinking LED on PB0
 #define SQWAVE PB1  // 500Hz square wave on PB1
 
-#define LED_R PB2   // Red LED on PB2
-#define LED_G PB3   // Green LED on PB3
-#define LED_B PB4   // Blue LED on PB4
+#define LED_R PD2   // Red LED on PD2
+#define LED_G PD7   // Green LED on PD7
+#define LED_B PD4   // Blue LED on PD4
 
 #define BAUDRATE (9600)
 #define BAUD_SETTING ((F_CPU / (BAUDRATE * 16UL)) - 1)
@@ -175,58 +174,58 @@ int UART0RxAvailable(void)
 }
 
 
-/* setRGBLed --- control RGB LED connected to PORT B */
+/* setRGBLed --- control RGB LED connected to PORT D */
 
 void setRGBLed(const int state, const uint8_t fade)
 {
    switch (state) {
    case 0:                    // Red fading up, blue on
-//    OCR2A = fade;
-//    OCR0A = 0;
-//    OCR0B = 255;
-      PORTB |= (1 << LED_R);
-      PORTB &= ~(1 << LED_G);
-      PORTB &= ~(1 << LED_B);
+      OCR2A = fade;
+      OCR0A = 0;
+      OCR0B = 255;
+      PORTD |= (1 << LED_R);
+      PORTD &= ~(1 << LED_G);
+      PORTD &= ~(1 << LED_B);
       break;
    case 1:                    // Red on, blue fading down
-//    OCR2A = 255;
-//    OCR0A = 0;
-//    OCR0B = 255 - fade;
-      PORTB |= (1 << LED_R);
-      PORTB |= (1 << LED_G);
-      PORTB &= ~(1 << LED_B);
+      OCR2A = 255;
+      OCR0A = 0;
+      OCR0B = 255 - fade;
+      PORTD |= (1 << LED_R);
+      PORTD |= (1 << LED_G);
+      PORTD &= ~(1 << LED_B);
       break;
    case 2:                    // Red on, green fading up
-//    OCR2A = 255;
-//    OCR0A = fade;
-//    OCR0B = 0;
-      PORTB &= ~(1 << LED_R);
-      PORTB |= (1 << LED_G);
-      PORTB &= ~(1 << LED_B);
+      OCR2A = 255;
+      OCR0A = fade;
+      OCR0B = 0;
+      PORTD &= ~(1 << LED_R);
+      PORTD |= (1 << LED_G);
+      PORTD &= ~(1 << LED_B);
       break;
    case 3:                    // Red fading down, green on
-//    OCR2A = 255 - fade;
-//    OCR0A = 255;
-//    OCR0B = 0;
-      PORTB &= ~(1 << LED_R);
-      PORTB |= (1 << LED_G);
-      PORTB |= (1 << LED_B);
+      OCR2A = 255 - fade;
+      OCR0A = 255;
+      OCR0B = 0;
+      PORTD &= ~(1 << LED_R);
+      PORTD |= (1 << LED_G);
+      PORTD |= (1 << LED_B);
       break;
    case 4:                    // Green on, blue fading up
-//    OCR2A = 0;
-//    OCR0A = 255;
-//    OCR0B = fade;
-      PORTB &= ~(1 << LED_R);
-      PORTB &= ~(1 << LED_G);
-      PORTB |= (1 << LED_B);
+      OCR2A = 0;
+      OCR0A = 255;
+      OCR0B = fade;
+      PORTD &= ~(1 << LED_R);
+      PORTD &= ~(1 << LED_G);
+      PORTD |= (1 << LED_B);
       break;
    case 5:                    // Green fading down, blue on
-//    OCR2A = 0;
-//    OCR0A = 255 - fade;
-//    OCR0B = 255;
-      PORTB |= (1 << LED_R);
-      PORTB &= ~(1 << LED_G);
-      PORTB |= (1 << LED_B);
+      OCR2A = 0;
+      OCR0A = 255 - fade;
+      OCR0B = 255;
+      PORTD |= (1 << LED_R);
+      PORTD &= ~(1 << LED_G);
+      PORTD |= (1 << LED_B);
       break;
    }
 }
@@ -254,8 +253,10 @@ static void initMCU(void)
 static void initGPIOs(void)
 {
    // Set up output pins
-   DDRB |= (1 << LED) | (1 << LED_R) | (1 << LED_G) | (1 << LED_B);
+   DDRB |= (1 << LED) | (1 << SQWAVE);
+   DDRD |= (1 << LED_R) | (1 << LED_B) | (1 << LED_G);
    PORTB = 0;  // All LEDs off
+   PORTD = 0;
 }
 
 
@@ -284,18 +285,21 @@ static void initUARTs(void)
 
 static void initPWM(void)
 {
-#if 0
    // Config Timer 0 for PWM
    TCCR0A = (1 << COM0A1) | (1 << COM0B1) | (1 << WGM00);
    TCCR0B = (1 << CS01);   // Clock source = CLK/8, start PWM
    OCR0A = 0x80;
    OCR0B = 0x80;
-   // Config Timer 1 for PWM
-   TCCR1A = (1 << COM0A1) | (1 << COM0B1) | (1 << WGM00);
-   TCCR1B = (1 << CS01);   // Clock source = CLK/8, start PWM
-   OCR1A = 0x80;
-   OCR1B = 0x80;
-#endif
+   
+   DDRD |= (1 << PD6) | (1 << PD5); // Set OC0A and OC0B as outputs
+
+   // Config Timer 2 for PWM
+   TCCR2A = (1 << COM2A1) | (1 << COM2B1) | (1 << WGM20);
+   TCCR2B = (1 << CS21);   // Clock source = CLK/8, start PWM
+   OCR2A = 0x80;
+   OCR2B = 0x80;
+
+   DDRB |= (1 << PB3);              // Set OC2A as output
 }
 
 

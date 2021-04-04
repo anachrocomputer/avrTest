@@ -159,28 +159,6 @@ uint32_t millis(void)
 }
 
 
-/* t1ou0 --- transmit one character to UART0 by polling */
-
-void t1ou0(const int ch)
-{
-   while ((UCSR0A & (1 << UDRE0)) == 0)
-      ;
-      
-   UDR0 = ch;
-}
-
-
-/* t1ou1 --- transmit one character to UART1 by polling */
-
-void t1ou1(const int ch)
-{
-   while ((UCSR1A & (1 << UDRE1)) == 0)
-      ;
-      
-   UDR1 = ch;
-}
-
-
 /* UART0RxByte --- read one character from the UART via the circular buffer */
 
 uint8_t UART0RxByte(void)
@@ -465,7 +443,7 @@ int main(void)
          if (millis() >= end) {
             end = millis() + 500UL;
 
-            PINB = (1 << LED);         // LED on PA1 toggle
+            PINB = (1 << LED);         // LED on PB0 toggle
 
             UART1TxByte('U');
             UART1TxByte('1');

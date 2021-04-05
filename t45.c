@@ -6,7 +6,8 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-#define LED PB4  // Blinking LED on PB4
+#define LED    PB4  // Blinking LED on PB4
+#define SQWAVE PB2  // 500Hz square wave on PB2
 
 uint8_t SavedMCUSR = 0;
 volatile uint32_t Milliseconds = 0UL;
@@ -19,7 +20,7 @@ ISR(TIMER1_COMPA_vect)
 {
    Milliseconds++;
    Tick = 1;
-   PINB = (1 << PB2);         // DEBUG: 500Hz on PB2 pin
+   PINB = (1 << SQWAVE);      // DEBUG: 500Hz on PB2 pin
 }
 
 
@@ -50,8 +51,8 @@ static void initMCU(void)
 
 static void initGPIOs(void)
 {
-   // Set Pin 3 (PB4) and Pin 6 (PB1) as output pins
-   DDRB |= (1 << LED) | (1 << PB2) | (1 << PB1) | (1 << PB0);
+   // Set Pin 3 (PB4), Pin 7 (PB2) and Pin 6 (PB1) as output pins
+   DDRB |= (1 << LED) | (1 << SQWAVE) | (1 << PB1) | (1 << PB0);
    PORTB = 0;  // All LEDs off
 }
 

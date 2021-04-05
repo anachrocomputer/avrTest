@@ -9,11 +9,12 @@
 #include <avr/interrupt.h>
 #include <util/delay.h>
 
-#define LED PB0  // Blinking LED on PB0
+#define LED    PB0  // Blinking LED on PB0
+#define SQWAVE PB1  // 500Hz square wave on PB1
 
-#define LED_R PB2
-#define LED_G PB3
-#define LED_B PB4
+#define LED_R PB2   // Red LED on PB2
+#define LED_G PB3   // Green LED on PB3
+#define LED_B PB4   // Blue LED on PB4
 
 #define BAUDRATE (9600)
 #define BAUD_SETTING ((F_CPU / (BAUDRATE * 16UL)) - 1)
@@ -102,7 +103,7 @@ ISR(TIMER1_COMPA_vect)
 {
    Milliseconds++;
    Tick = 1;
-   PINB = (1 << PB1);         // DEBUG: 500Hz on PB1 pin
+   PINB = (1 << SQWAVE);      // DEBUG: 500Hz on PB1 pin
 }
 
 
@@ -183,7 +184,7 @@ static void initMCU(void)
 static void initGPIOs(void)
 {
    // Set up output pins
-   DDRB |= (1 << LED) | (1 << LED_R) | (1 << LED_G) | (1 << LED_B) | (1 << PB1);
+   DDRB |= (1 << LED) | (1 << LED_R) | (1 << LED_G) | (1 << LED_B) | (1 << SQWAVE);
    PORTB = 0;  // All LEDs off
 }
 
